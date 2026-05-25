@@ -1,131 +1,120 @@
 "use client";
 
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { ArrowLeft, CheckCircle2, Eye, Palette, QrCode, Settings2, Soup, Store, UtensilsCrossed } from "lucide-react";
+import { BRAND_NAME } from "@/lib/brand";
 import {
-  ArrowLeft,
-  CheckCircle2,
-  Eye,
-  Globe2,
-  Image,
-  LayoutTemplate,
-  Plus,
-  QrCode,
-  Save,
-  Sparkles,
-  Trash2,
-  Utensils
-} from "lucide-react";
-import {
-  allergenOptions,
+  buildPublicPath,
   defaultCartaVivaState,
-  menuGroupOptions,
+  moveEntity,
+  normalizeState,
   slugify,
+  sortByOrder,
   STORAGE_KEY,
-  tagOptions,
+  uid,
   type CartaVivaState,
   type Category,
-  type MenuGroup,
-  type Product,
-  type ProductStatus
+  type MenuTemplate,
+  type PlanTier,
+  type Product
 } from "@/lib/cartaviva-data";
-import { FakeQr, MobilePreview } from "@/components/cartaviva/PublicMenuView";
+import { BuilderLayout } from "@/components/cartaviva/BuilderLayout";
+import { BuilderSidebar, type BuilderStep } from "@/components/cartaviva/BuilderSidebar";
+import { RestaurantForm } from "@/components/cartaviva/RestaurantForm";
+import { DesignSettings } from "@/components/cartaviva/DesignSettings";
+import { CategoryManager } from "@/components/cartaviva/CategoryManager";
+import { ProductManager } from "@/components/cartaviva/ProductManager";
+import { DailyMenuEditor } from "@/components/cartaviva/DailyMenuEditor";
+import { QRPanel } from "@/components/cartaviva/QRPanel";
+import { MobileMenuPreview } from "@/components/cartaviva/MobileMenuPreview";
+import { SectionTabs } from "@/components/cartaviva/SectionTabs";
 
-const sections = [
-  { id: "restaurante", label: "Mi restaurante", icon: Utensils },
-  { id: "categorias", label: "Categorías", icon: LayoutTemplate },
-  { id: "platos", label: "Productos", icon: Image },
-  { id: "menu", label: "Menú del día", icon: Sparkles },
-  { id: "diseno", label: "Diseño", icon: Eye },
+const steps: BuilderStep[] = [
+  { id: "restaurant", label: "Restaurante", icon: Store },
+  { id: "design", label: "Diseno", icon: Palette },
+  { id: "categories", label: "Categorias", icon: Settings2 },
+  { id: "products", label: "Productos", icon: UtensilsCrossed },
+  { id: "daily-menu", label: "Menu del dia", icon: Soup },
   { id: "qr", label: "QR y publicar", icon: QrCode }
-] as const;
+];
 
-type SectionId = (typeof sections)[number]["id"];
-
-function normalizeState(state: CartaVivaState): CartaVivaState {
-  return {
-    ...state,
-    categories: state.categories.map((category) => ({
-      ...category,
-      group: category.group || (category.id === "daily" ? "especial" : category.id === "drinks" ? "bebidas" : "comida")
-    }))
-  };
-}
-
-function uid(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Panel({
+  eyebrow,
+  title,
+  text,
+  children
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  children: ReactNode;
+}) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-black text-[#221812]">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#e85d04] ${props.className || ""}`} />;
-}
-
-function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`min-h-24 w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#e85d04] ${props.className || ""}`} />;
-}
-
-function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#e85d04] ${props.className || ""}`} />;
-}
-
-function TogglePill({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-black transition ${active ? "bg-[#e85d04] text-white" : "bg-[#f1e7d8] text-[#6b594a] hover:bg-[#eadfce]"}`}
-    >
-      {children}
-    </button>
+    <section className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm md:p-7">
+      <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#e85d04]">{eyebrow}</p>
+      <h1 className="mt-3 text-3xl font-bold text-[#221812] md:text-4xl">{title}</h1>
+      <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6b594a] md:text-base">{text}</p>
+      <div className="mt-7">{children}</div>
+    </section>
   );
 }
 
 export default function BuilderPage() {
-  const [activeSection, setActiveSection] = useState<SectionId>("restaurante");
+  const [activeStep, setActiveStep] = useState<string>("restaurant");
   const [data, setData] = useState<CartaVivaState>(defaultCartaVivaState);
-  const [saved, setSaved] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setData(normalizeState(JSON.parse(stored) as CartaVivaState));
-      } catch {
-        setData(defaultCartaVivaState);
-      }
+    if (!stored) return;
+    try {
+      setData(normalizeState(JSON.parse(stored) as CartaVivaState));
+    } catch {
+      setData(defaultCartaVivaState);
     }
   }, []);
 
   useEffect(() => {
+    setSaveState("saving");
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    setSaved(true);
-    const timeout = window.setTimeout(() => setSaved(false), 1400);
+    const timeout = window.setTimeout(() => setSaveState("saved"), 250);
     return () => window.clearTimeout(timeout);
   }, [data]);
 
-  const publicUrl = useMemo(() => `cartaviva.es/carta/${data.restaurant.slug}`, [data.restaurant.slug]);
+  const publicPath = useMemo(() => buildPublicPath(data.restaurant.slug), [data.restaurant.slug]);
+  const publicUrl = useMemo(() => `https://preview.local${publicPath}`, [publicPath]);
+
+  const visibleProducts = useMemo(() => {
+    return sortByOrder(data.products).filter((product) => {
+      const categoryMatch = categoryFilter === "all" || product.categoryId === categoryFilter;
+      const statusMatch = statusFilter === "all" || product.status === statusFilter;
+      return categoryMatch && statusMatch;
+    });
+  }, [categoryFilter, data.products, statusFilter]);
 
   function updateRestaurant(field: keyof CartaVivaState["restaurant"], value: string) {
     setData((current) => {
-      const nextRestaurant = { ...current.restaurant, [field]: value };
-      if (field === "name") nextRestaurant.slug = slugify(value);
-      return { ...current, restaurant: nextRestaurant };
+      const restaurant = { ...current.restaurant, [field]: value };
+      if (field === "name") restaurant.slug = slugify(value);
+      return { ...current, restaurant };
     });
+  }
+
+  function updateSettings(patch: Partial<CartaVivaState["settings"]>) {
+    setData((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
+  }
+
+  function updateDailyMenu<K extends keyof CartaVivaState["dailyMenu"]>(field: K, value: CartaVivaState["dailyMenu"][K]) {
+    setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, [field]: value } }));
   }
 
   function addCategory() {
     const category: Category = {
       id: uid("cat"),
-      name: "Nueva categoría",
+      name: "Nueva categoria",
       visible: true,
       order: data.categories.length,
       group: "comida"
@@ -140,32 +129,38 @@ export default function BuilderPage() {
     }));
   }
 
+  function moveCategory(id: string, direction: "up" | "down") {
+    setData((current) => ({ ...current, categories: moveEntity(current.categories, id, direction) }));
+  }
+
   function deleteCategory(id: string) {
     if (id === "daily") return;
-    setData((current) => ({
-      ...current,
-      categories: current.categories.filter((category) => category.id !== id),
-      products: current.products.map((product) => {
-        const fallback = current.categories.find((category) => category.id !== id && category.id !== "daily")?.id || "daily";
-        return product.categoryId === id ? { ...product, categoryId: fallback } : product;
-      })
-    }));
+    setData((current) => {
+      const nextCategories = current.categories.filter((category) => category.id !== id).map((category, index) => ({ ...category, order: index }));
+      const fallbackId = nextCategories.find((category) => category.id !== "daily")?.id || "daily";
+      return {
+        ...current,
+        categories: nextCategories,
+        products: current.products.map((product) => product.categoryId === id ? { ...product, categoryId: fallbackId } : product)
+      };
+    });
   }
 
   function addProduct() {
-    const fallbackCategory = data.categories.find((category) => category.id !== "daily")?.id || data.categories[0]?.id || "daily";
+    const firstCategory = sortByOrder(data.categories).find((category) => category.id !== "daily")?.id || "daily";
     const product: Product = {
       id: uid("prod"),
-      categoryId: fallbackCategory,
+      categoryId: firstCategory,
       name: "Nuevo producto",
-      description: "Descripción breve del producto para que el cliente entienda qué va a pedir.",
+      description: "Descripcion del item de carta.",
       price: "0,00 €",
-      imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=900&auto=format&fit=crop",
+      imageUrl: "",
       tags: [],
       allergens: [],
-      status: "active"
+      status: "active",
+      order: data.products.length
     };
-    setData((current) => ({ ...current, products: [product, ...current.products] }));
+    setData((current) => ({ ...current, products: [...current.products, product] }));
   }
 
   function updateProduct(id: string, updates: Partial<Product>) {
@@ -176,245 +171,171 @@ export default function BuilderPage() {
   }
 
   function deleteProduct(id: string) {
-    setData((current) => ({ ...current, products: current.products.filter((product) => product.id !== id) }));
+    setData((current) => ({
+      ...current,
+      products: current.products.filter((product) => product.id !== id).map((product, index) => ({ ...product, order: index }))
+    }));
   }
 
-  function toggleProductList(id: string, field: "tags" | "allergens", value: string) {
-    const product = data.products.find((item) => item.id === id);
-    if (!product) return;
-    const currentList = product[field];
-    const nextList = currentList.includes(value) ? currentList.filter((item) => item !== value) : [...currentList, value];
-    updateProduct(id, { [field]: nextList } as Partial<Product>);
+  function duplicateProduct(id: string) {
+    setData((current) => {
+      const source = current.products.find((product) => product.id === id);
+      if (!source) return current;
+      const duplicate: Product = { ...source, id: uid("prod"), name: `${source.name} copia`, order: current.products.length };
+      return { ...current, products: [...current.products, duplicate] };
+    });
+  }
+
+  function moveProduct(id: string, direction: "up" | "down" | "first" | "last") {
+    setData((current) => ({ ...current, products: moveEntity(current.products, id, direction) }));
+  }
+
+  function restoreDemo() {
+    setData(defaultCartaVivaState);
+  }
+
+  function clearChanges() {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setData(defaultCartaVivaState);
   }
 
   function copyLink() {
-    navigator.clipboard?.writeText(`https://${publicUrl}`);
-    alert("Enlace copiado. En este MVP se guarda en localStorage.");
+    navigator.clipboard?.writeText(publicUrl);
   }
 
-  function resetDemo() {
-    setData(defaultCartaVivaState);
+  function renderStep() {
+    if (activeStep === "restaurant") {
+      return (
+        <Panel eyebrow="Paso 1" title="Informacion del restaurante" text="Nombre, portada, contacto, horario y color principal para dar presencia de miniweb profesional.">
+          <RestaurantForm data={data} onChange={updateRestaurant} />
+        </Panel>
+      );
+    }
+
+    if (activeStep === "design") {
+      return (
+        <Panel eyebrow="Paso 2" title="Diseno y posicionamiento" text="Plantillas, branding del plan gratis, tipografia y ajustes visuales para que la preview parezca producto real.">
+          <DesignSettings
+            data={data}
+            onTemplateChange={(value: MenuTemplate) => updateRestaurant("template", value)}
+            onPlanChange={(value: PlanTier) => updateSettings({ plan: value, showBranding: value === "free" ? true : data.settings.showBranding })}
+            onBooleanChange={(field, value) => updateSettings({ [field]: value })}
+            onValueChange={(field, value) => updateSettings({ [field]: value })}
+          />
+        </Panel>
+      );
+    }
+
+    if (activeStep === "categories") {
+      return (
+        <Panel eyebrow="Paso 3" title="Categorias y secciones" text="Organiza comida, bebidas, vinos, desayunos, cocteles o menu del dia con orden claro y visibilidad controlada.">
+          <CategoryManager
+            categories={sortByOrder(data.categories)}
+            onAdd={addCategory}
+            onUpdate={updateCategory}
+            onDelete={deleteCategory}
+            onMove={moveCategory}
+          />
+        </Panel>
+      );
+    }
+
+    if (activeStep === "products") {
+      return (
+        <Panel eyebrow="Paso 4" title="Productos de carta" text="Incluye cafes, bebidas y platos. Puedes filtrar, duplicar, reordenar y dejar agotados u ocultos sin romper la vista publica.">
+          <ProductManager
+            products={visibleProducts}
+            categories={sortByOrder(data.categories)}
+            categoryFilter={categoryFilter}
+            statusFilter={statusFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            onStatusFilterChange={setStatusFilter}
+            onAdd={addProduct}
+            onUpdate={updateProduct}
+            onDelete={deleteProduct}
+            onDuplicate={duplicateProduct}
+            onMove={moveProduct}
+          />
+        </Panel>
+      );
+    }
+
+    if (activeStep === "daily-menu") {
+      return (
+        <Panel eyebrow="Paso 5" title="Menu del dia" text="Redisenado para destacar mas arriba y verse bien tanto en movil como en escritorio, con fotos opcionales por bloque.">
+          <DailyMenuEditor data={data} onChange={updateDailyMenu} />
+        </Panel>
+      );
+    }
+
+    return (
+      <Panel eyebrow="Paso 6" title="QR y publicar" text="URL simulada, tarjeta QR y logica visual por plan para que el MVP ya se pueda ensenar a un restaurante con confianza.">
+        <QRPanel data={data} publicUrl={publicUrl} onCopyLink={copyLink} />
+      </Panel>
+    );
   }
 
   return (
     <div className="min-h-screen bg-[#fffaf3] text-[#221812]">
       <header className="sticky top-0 z-50 border-b border-[#eadfce] bg-[#fffaf3]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3 px-4 py-4 lg:px-8">
+        <div className="mx-auto flex max-w-[1560px] flex-wrap items-center justify-between gap-3 px-4 py-4 lg:px-8">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#221812] shadow-sm">
+            <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-white shadow-sm">
               <ArrowLeft size={18} />
             </Link>
             <div>
-              <p className="text-lg font-black">CartaViva Builder</p>
-              <p className="text-xs font-semibold text-[#7b6a5b]">Crea tu carta, revisa la vista móvil y publica el QR.</p>
+              <p className="text-lg font-bold">{BRAND_NAME} Builder</p>
+              <p className="text-xs font-semibold text-[#7b6a5b]">Herramienta visual para crear la miniweb del restaurante.</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#6b594a] shadow-sm">
-              <CheckCircle2 size={16} className="text-[#e85d04]" /> {saved ? "Guardando..." : "Guardado localmente"}
+              <CheckCircle2 size={16} className="text-[#e85d04]" />
+              {saveState === "saving" ? "Guardando..." : "Guardado localmente"}
             </span>
-            <Link href={`/carta/${data.restaurant.slug}`} className="rounded-full border border-[#d9cbb8] bg-white px-4 py-2 text-sm font-black text-[#221812]">Ver carta</Link>
-            <button onClick={resetDemo} className="rounded-full bg-[#221812] px-4 py-2 text-sm font-black text-white">Restaurar demo</button>
+            <Link href="/demo" className="rounded-full border border-[#d9cbb8] bg-white px-4 py-2 text-sm font-bold">Ver demo</Link>
+            <Link href={publicPath} className="rounded-full border border-[#d9cbb8] bg-white px-4 py-2 text-sm font-bold">Vista publica</Link>
+            <button type="button" onClick={restoreDemo} className="rounded-full bg-[#221812] px-4 py-2 text-sm font-bold text-white">Restaurar demo</button>
+            <button type="button" onClick={clearChanges} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#6b594a]">Limpiar cambios</button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[250px_1fr_430px] lg:px-8">
-        <aside className="h-fit rounded-[2rem] border border-[#eadfce] bg-white p-3 shadow-sm lg:sticky lg:top-24">
-          <p className="px-3 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#a08d7d]">Panel</p>
-          <nav className="grid gap-2">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black transition ${activeSection === section.id ? "bg-[#221812] text-white" : "text-[#6b594a] hover:bg-[#fff1df] hover:text-[#221812]"}`}
-                >
-                  <Icon size={18} /> {section.label}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
-        <section className="space-y-5">
-          {activeSection === "restaurante" && (
-            <PanelCard eyebrow="Datos principales" title="Mi restaurante" text="Esto será la cabecera de tu carta digital y la información que verá el cliente al escanear el QR.">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nombre del restaurante"><TextInput value={data.restaurant.name} onChange={(event) => updateRestaurant("name", event.target.value)} /></Field>
-                <Field label="WhatsApp"><TextInput value={data.restaurant.whatsapp} onChange={(event) => updateRestaurant("whatsapp", event.target.value)} /></Field>
-                <Field label="Descripción corta"><TextArea value={data.restaurant.description} onChange={(event) => updateRestaurant("description", event.target.value)} /></Field>
-                <Field label="Logo o imagen por URL"><TextInput value={data.restaurant.logoUrl} onChange={(event) => updateRestaurant("logoUrl", event.target.value)} /></Field>
-                <Field label="Imagen de portada URL"><TextArea value={data.restaurant.coverUrl} onChange={(event) => updateRestaurant("coverUrl", event.target.value)} /></Field>
-                <Field label="Teléfono"><TextInput value={data.restaurant.phone} onChange={(event) => updateRestaurant("phone", event.target.value)} /></Field>
-                <Field label="Dirección"><TextInput value={data.restaurant.address} onChange={(event) => updateRestaurant("address", event.target.value)} /></Field>
-                <Field label="Instagram"><TextInput value={data.restaurant.instagram} onChange={(event) => updateRestaurant("instagram", event.target.value)} /></Field>
-                <Field label="Horario"><TextInput value={data.restaurant.schedule} onChange={(event) => updateRestaurant("schedule", event.target.value)} /></Field>
-                <Field label="Idioma principal"><Select value={data.restaurant.language} onChange={(event) => updateRestaurant("language", event.target.value)}><option>Español</option><option>English</option><option>Deutsch</option><option>Français</option></Select></Field>
-                <Field label="Estilo base"><Select value={data.restaurant.theme} onChange={(event) => updateRestaurant("theme", event.target.value)}><option value="clasico">Clásico</option><option value="moderno">Moderno</option><option value="oscuro">Oscuro</option><option value="elegante">Elegante</option></Select></Field>
-              </div>
-            </PanelCard>
-          )}
-
-          {activeSection === "categorias" && (
-            <PanelCard eyebrow="Estructura" title="Categorías de la carta" text="Crea secciones como carnes, postres, bebidas o lo que tenga sentido para el restaurante.">
-              <div className="mb-4 flex justify-end"><ActionButton onClick={addCategory}><Plus size={16} /> Añadir categoría</ActionButton></div>
-              <div className="space-y-3">
-                {[...data.categories].sort((a, b) => a.order - b.order).map((category) => (
-                  <div key={category.id} className="grid gap-3 rounded-3xl border border-[#eadfce] bg-[#fffaf3] p-4 md:grid-cols-[1fr_150px_90px_110px_44px]">
-                    <TextInput value={category.name} onChange={(event) => updateCategory(category.id, { name: event.target.value })} />
-                    <Select value={category.group} onChange={(event) => updateCategory(category.id, { group: event.target.value as MenuGroup })}>
-                      {menuGroupOptions.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
-                    </Select>
-                    <TextInput type="number" value={category.order} onChange={(event) => updateCategory(category.id, { order: Number(event.target.value) })} />
-                    <button onClick={() => updateCategory(category.id, { visible: !category.visible })} className={`rounded-2xl px-3 py-2 text-sm font-black ${category.visible ? "bg-green-100 text-green-800" : "bg-stone-200 text-stone-600"}`}>{category.visible ? "Visible" : "Oculta"}</button>
-                    <button onClick={() => deleteCategory(category.id)} className="rounded-2xl bg-white text-red-500 disabled:opacity-30" disabled={category.id === "daily"}><Trash2 size={18} className="mx-auto" /></button>
-                  </div>
-                ))}
-              </div>
-            </PanelCard>
-          )}
-
-          {activeSection === "platos" && (
-            <PanelCard eyebrow="Carta" title="Productos de carta" text="Añade cafés, bebidas, tapas, postres o platos. Los productos ocultos no aparecen en la carta pública.">
-              <div className="mb-4 flex justify-end"><ActionButton onClick={addProduct}><Plus size={16} /> Añadir producto</ActionButton></div>
-              <div className="space-y-4">
-                {data.products.map((product) => (
-                  <div key={product.id} className="rounded-[1.7rem] border border-[#eadfce] bg-white p-4 shadow-sm">
-                    <div className="grid gap-4 md:grid-cols-[120px_1fr]">
-                      <img src={product.imageUrl || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=900&auto=format&fit=crop"} alt="" className="h-28 w-full rounded-2xl object-cover" />
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <Field label="Nombre"><TextInput value={product.name} onChange={(event) => updateProduct(product.id, { name: event.target.value })} /></Field>
-                        <Field label="Precio"><TextInput value={product.price} onChange={(event) => updateProduct(product.id, { price: event.target.value })} /></Field>
-                        <Field label="Categoría"><Select value={product.categoryId} onChange={(event) => updateProduct(product.id, { categoryId: event.target.value })}>{data.categories.filter((category) => category.id !== "daily").map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></Field>
-                        <Field label="Estado"><Select value={product.status} onChange={(event) => updateProduct(product.id, { status: event.target.value as ProductStatus })}><option value="active">Activo</option><option value="soldout">Agotado</option><option value="hidden">Oculto</option></Select></Field>
-                        <Field label="Foto URL"><TextInput value={product.imageUrl} onChange={(event) => updateProduct(product.id, { imageUrl: event.target.value })} className="md:col-span-2" /></Field>
-                        <div className="md:col-span-2"><Field label="Descripción"><TextArea value={product.description} onChange={(event) => updateProduct(product.id, { description: event.target.value })} /></Field></div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <ChipGroup title="Etiquetas" options={tagOptions} selected={product.tags} onToggle={(value) => toggleProductList(product.id, "tags", value)} />
-                      <ChipGroup title="Alérgenos" options={allergenOptions} selected={product.allergens} onToggle={(value) => toggleProductList(product.id, "allergens", value)} />
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button onClick={() => updateProduct(product.id, { status: product.status === "soldout" ? "active" : "soldout" })} className="rounded-full bg-[#fff1df] px-4 py-2 text-sm font-black text-[#c2410c]">Marcar como agotado</button>
-                      <button onClick={() => updateProduct(product.id, { status: product.status === "hidden" ? "active" : "hidden" })} className="rounded-full bg-[#f1e7d8] px-4 py-2 text-sm font-black text-[#6b594a]">Ocultar producto</button>
-                      <button onClick={() => deleteProduct(product.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-600">Eliminar</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </PanelCard>
-          )}
-
-          {activeSection === "menu" && (
-            <PanelCard eyebrow="Actualizable cada día" title="Menú del día" text="Ideal para bares y restaurantes que cambian primeros, segundos o platos disponibles cada mañana.">
-              <div className="mb-5 flex items-center justify-between rounded-3xl bg-[#fff1df] p-4">
-                <div><p className="font-black">Mostrar menú del día</p><p className="text-sm text-[#7b6a5b]">Si está activo aparecerá arriba de la carta.</p></div>
-                <button onClick={() => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, enabled: !current.dailyMenu.enabled } }))} className={`rounded-full px-4 py-2 text-sm font-black ${data.dailyMenu.enabled ? "bg-[#e85d04] text-white" : "bg-white text-[#6b594a]"}`}>{data.dailyMenu.enabled ? "Activo" : "Inactivo"}</button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Título"><TextInput value={data.dailyMenu.title} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, title: event.target.value } }))} /></Field>
-                <Field label="Precio"><TextInput value={data.dailyMenu.price} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, price: event.target.value } }))} /></Field>
-                <Field label="Días disponibles"><TextInput value={data.dailyMenu.availableDays} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, availableDays: event.target.value } }))} /></Field>
-                <Field label="Nota"><TextInput value={data.dailyMenu.note} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, note: event.target.value } }))} /></Field>
-                <Field label="Primeros platos"><TextArea value={data.dailyMenu.starters} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, starters: event.target.value } }))} /></Field>
-                <Field label="Segundos platos"><TextArea value={data.dailyMenu.mains} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, mains: event.target.value } }))} /></Field>
-                <Field label="Postres"><TextArea value={data.dailyMenu.desserts} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, desserts: event.target.value } }))} /></Field>
-                <div className="flex items-center gap-3 rounded-3xl border border-[#eadfce] bg-white p-4">
-                  <input id="drink" type="checkbox" checked={data.dailyMenu.drinkIncluded} onChange={(event) => setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, drinkIncluded: event.target.checked } }))} className="h-5 w-5" />
-                  <label htmlFor="drink" className="font-black">Bebida incluida</label>
-                </div>
-              </div>
-            </PanelCard>
-          )}
-
-          {activeSection === "diseno" && (
-            <PanelCard eyebrow="Plantillas guiadas" title="Diseño" text="Opciones simples para que siempre quede bonito sin tener que diseñar desde cero.">
-              <div className="space-y-6">
-                <div><p className="mb-3 font-black">Plantilla</p><div className="flex flex-wrap gap-2"><TogglePill active={data.settings.template === "visual"} onClick={() => setData((current) => ({ ...current, settings: { ...current.settings, template: "visual" } }))}>Visual con fotos</TogglePill><TogglePill active={data.settings.template === "elegant"} onClick={() => setData((current) => ({ ...current, settings: { ...current.settings, template: "elegant" } }))}>Elegante</TogglePill><TogglePill active={data.settings.template === "compact"} onClick={() => setData((current) => ({ ...current, settings: { ...current.settings, template: "compact" } }))}>Compacta</TogglePill></div></div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Color principal"><TextInput type="color" value={data.settings.primaryColor} onChange={(event) => setData((current) => ({ ...current, settings: { ...current.settings, primaryColor: event.target.value } }))} className="h-14" /></Field>
-                  <Field label="Fotos"><Select value={data.settings.showImages} onChange={(event) => setData((current) => ({ ...current, settings: { ...current.settings, showImages: event.target.value as "always" | "onClick" } }))}><option value="always">Mostrar fotos siempre</option><option value="onClick">Mostrar al abrir producto</option></Select></Field>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex items-center justify-between rounded-3xl bg-white p-4 font-black"><span>Mostrar alérgenos</span><input type="checkbox" checked={data.settings.showAllergens} onChange={(event) => setData((current) => ({ ...current, settings: { ...current.settings, showAllergens: event.target.checked } }))} className="h-5 w-5" /></label>
-                  <label className="flex items-center justify-between rounded-3xl bg-white p-4 font-black"><span>Mostrar etiquetas</span><input type="checkbox" checked={data.settings.showTags} onChange={(event) => setData((current) => ({ ...current, settings: { ...current.settings, showTags: event.target.checked } }))} className="h-5 w-5" /></label>
-                </div>
-              </div>
-            </PanelCard>
-          )}
-
-          {activeSection === "qr" && (
-            <PanelCard eyebrow="Publicación" title="QR y publicar" text="Para este MVP el QR es visual. Después se puede convertir en descarga real en PDF/PNG.">
-              <div className="grid gap-5 md:grid-cols-[1fr_260px]">
-                <div className="space-y-4">
-                  <div className="rounded-3xl bg-[#fff1df] p-5"><p className="text-sm font-black uppercase tracking-[0.18em] text-[#e85d04]">URL pública del MVP</p><p className="mt-2 break-all text-xl font-black">{publicUrl}</p></div>
-                  <div className="flex flex-wrap gap-2">
-                    <ActionButton onClick={copyLink}><Globe2 size={16} /> Copiar enlace</ActionButton>
-                    <button onClick={() => alert("Próximamente descarga en PDF/PNG")} className="rounded-full border border-[#d9cbb8] bg-white px-5 py-3 text-sm font-black">Descargar QR</button>
-                    <button onClick={() => setData((current) => ({ ...current, published: !current.published }))} className={`rounded-full px-5 py-3 text-sm font-black ${data.published ? "bg-green-100 text-green-800" : "bg-stone-200 text-stone-700"}`}>{data.published ? "Publicado" : "No publicado"}</button>
-                  </div>
-                  <p className="text-sm leading-7 text-[#7b6a5b]">Este cartel se puede imprimir para mesas, barra o escaparate. La versión real podrá descargar PDF con el logo y varios tamaños.</p>
-                </div>
-                <div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 text-center shadow-sm">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-[#a08d7d]">Cartel mesa</p>
-                  <h3 className="mt-2 text-2xl font-black">Escanea nuestra carta</h3>
-                  <p className="mb-4 mt-1 text-sm text-[#7b6a5b]">{data.restaurant.name}</p>
-                  <div className="mx-auto w-fit"><FakeQr color={data.settings.primaryColor} /></div>
-                  <p className="mt-4 text-xs font-bold text-[#7b6a5b]">Español · English · Deutsch</p>
-                </div>
-              </div>
-            </PanelCard>
-          )}
-        </section>
-
-        <div className="lg:hidden">
-          <PanelCard eyebrow="Vista móvil" title="Así lo verá el cliente" text="Preview rápida para revisar la carta sin salir del builder.">
-            <MobilePreview data={data} />
-          </PanelCard>
-        </div>
-
-        <aside className="hidden lg:block">
-          <div className="mb-3 flex items-center justify-between px-2">
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#a08d7d]">Vista previa</p>
-            <Save size={17} className="text-[#e85d04]" />
-          </div>
-          <MobilePreview data={data} />
-        </aside>
-      </main>
-    </div>
-  );
-}
-
-function PanelCard({ eyebrow, title, text, children }: { eyebrow: string; title: string; text: string; children: ReactNode }) {
-  return (
-    <div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm md:p-7">
-      <p className="text-xs font-black uppercase tracking-[0.22em] text-[#e85d04]">{eyebrow}</p>
-      <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">{title}</h1>
-      <p className="mt-2 max-w-2xl leading-7 text-[#6b594a]">{text}</p>
-      <div className="mt-7">{children}</div>
-    </div>
-  );
-}
-
-function ActionButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return <button onClick={onClick} className="inline-flex items-center gap-2 rounded-full bg-[#e85d04] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:scale-[1.02]">{children}</button>;
-}
-
-function ChipGroup({ title, options, selected, onToggle }: { title: string; options: string[]; selected: string[]; onToggle: (value: string) => void }) {
-  return (
-    <div>
-      <p className="mb-2 text-sm font-black text-[#221812]">{title}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <button key={option} type="button" onClick={() => onToggle(option)} className={`rounded-full px-3 py-2 text-xs font-black ${selected.includes(option) ? "bg-[#221812] text-white" : "bg-[#f1e7d8] text-[#6b594a]"}`}>{option}</button>
-        ))}
+      <div className="px-4 pt-4 lg:hidden">
+        <SectionTabs tabs={steps.map((step) => ({ id: step.id, label: step.label }))} activeId={activeStep} onChange={setActiveStep} />
       </div>
+
+      <BuilderLayout
+        sidebar={<div className="hidden lg:block"><BuilderSidebar steps={steps} activeStep={activeStep} onChange={setActiveStep} /></div>}
+        editor={
+          <div className="space-y-5">
+            {renderStep()}
+            <div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:hidden">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview movil</p>
+                  <h2 className="text-2xl font-bold">Asi lo vera el cliente</h2>
+                </div>
+                <Eye size={18} className="text-[#e85d04]" />
+              </div>
+              <MobileMenuPreview data={data} branded={data.settings.showBranding} />
+            </div>
+          </div>
+        }
+        preview={
+          <div className="sticky top-24 space-y-3">
+            <div className="flex items-center justify-between px-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview movil</p>
+                <h2 className="text-xl font-bold">Tiempo real</h2>
+              </div>
+              <Eye size={18} className="text-[#e85d04]" />
+            </div>
+            <MobileMenuPreview data={data} branded={data.settings.showBranding} />
+          </div>
+        }
+      />
     </div>
   );
 }

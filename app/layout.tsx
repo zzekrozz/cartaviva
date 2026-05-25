@@ -1,15 +1,21 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import type { ReactNode } from "react";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import "./globals.css";
+
+const heading = Fraunces({ subsets: ["latin"], variable: "--font-heading" });
+const body = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
-  title: 'CartaViva | Carta digital con fotos y QR',
-  description: 'Crea una carta digital visual para restaurantes con fotos, menú del día, idiomas y QR para mesas.'
+  title: `${BRAND_NAME} | Carta digital premium para restaurantes`,
+  description: BRAND_TAGLINE
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body className={`${heading.variable} ${body.variable}`}>{children}</body>
     </html>
   );
 }
