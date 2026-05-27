@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerAnonSupabaseClient } from "@/lib/supabase/server";
-import { getPriceId, getStripe } from "@/lib/stripe";
+import { getCheckoutDiscount, getPriceId, getStripe } from "@/lib/stripe";
 import { toBillingInterval, toPlanTier } from "@/lib/plan-config";
 
 export async function POST(request: Request) {
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
 
     const priceId = getPriceId(plan, interval, trial);
     if (!priceId) return NextResponse.json({ error: `Falta Price ID de Stripe para ${plan} ${interval}.` }, { status: 400 });
+    const discounts = getCheckoutDiscount(plan, interval, trial);
 
     const stripe = getStripe();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -39,7 +40,8 @@ export async function POST(request: Request) {
       cancel_url: `${appUrl}/probar?checkout=cancelled`,
       metadata: { user_id: data.user.id, selected_plan: plan, billing_interval: interval, trial_type: trial },
       subscription_data: { metadata: { user_id: data.user.id, selected_plan: plan, billing_interval: interval, trial_type: trial } },
-      allow_promotion_codes: true
+      ...(discounts ? { discounts } : {}),
+      allow_promotion_codes: false
     });
 
     return NextResponse.json({ url: session.url });

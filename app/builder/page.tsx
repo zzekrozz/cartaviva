@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Eye, LogIn, Palette, QrCode, Settings2, Languages, Soup, Store, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, LogIn, MonitorSmartphone, Palette, QrCode, Settings2, Languages, Soup, Store, UtensilsCrossed } from "lucide-react";
 import { BRAND_NAME } from "@/lib/brand";
 import {
   buildPublicPath,
@@ -29,10 +29,10 @@ import { DailyMenuEditor } from "@/components/cartaviva/DailyMenuEditor";
 import { WeeklyMenuEditor } from "@/components/cartaviva/WeeklyMenuEditor";
 import { QRPanel } from "@/components/cartaviva/QRPanel";
 import { MobileMenuPreview } from "@/components/cartaviva/MobileMenuPreview";
+import { DesktopMenuPreview } from "@/components/cartaviva/DesktopMenuPreview";
 import { SectionTabs } from "@/components/cartaviva/SectionTabs";
 import { TrialPlanBanner } from "@/components/cartaviva/TrialPlanBanner";
 import { TranslationEditor } from "@/components/cartaviva/TranslationEditor";
-import { TutorialGuide } from "@/components/cartaviva/TutorialGuide";
 import { getPlanConfig, isOneEuroTrial, supportsDailyMenuPhotos, supportsProductPhotos, toPlanTier, type TrialType } from "@/lib/plan-config";
 
 const steps: BuilderStep[] = [
@@ -98,6 +98,7 @@ export default function BuilderPage() {
   const [origin, setOrigin] = useState("https://preview.local");
   const [trialType, setTrialType] = useState<TrialType>("none");
   const [planNotice, setPlanNotice] = useState("");
+  const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -169,11 +170,11 @@ export default function BuilderPage() {
 
   function updateDailyMenu<K extends keyof CartaVivaState["dailyMenu"]>(field: K, value: CartaVivaState["dailyMenu"][K]) {
     if (!dailyMenuPhotosEnabled && ["coverImage", "startersImage", "mainsImage", "dessertsImage"].includes(String(field)) && value) {
-      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     if (!dailyMenuPhotosEnabled && field === "showImages" && value) {
-      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, [field]: value } }));
@@ -238,7 +239,7 @@ export default function BuilderPage() {
 
   function updateProduct(id: string, updates: Partial<Product>) {
     if (!productPhotosEnabled && updates.imageUrl) {
-      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     setData((current) => ({
@@ -277,6 +278,11 @@ export default function BuilderPage() {
     setData(defaultCartaVivaState);
   }
 
+  function clearFilters() {
+    setCategoryFilter("all");
+    setStatusFilter("all");
+  }
+
   function copyLink() {
     navigator.clipboard?.writeText(publicUrl);
   }
@@ -299,6 +305,7 @@ export default function BuilderPage() {
             onPlanChange={(value: PlanTier) => setData((current) => applyPlanToState(current, value))}
             onBooleanChange={(field, value) => updateSettingField(field, value)}
             onValueChange={(field, value) => updateSettingField(field, value)}
+            onRestaurantChange={updateRestaurant}
           />
         </Panel>
       );
@@ -328,6 +335,7 @@ export default function BuilderPage() {
             statusFilter={statusFilter}
             onCategoryFilterChange={setCategoryFilter}
             onStatusFilterChange={setStatusFilter}
+            onClearFilters={clearFilters}
             onAdd={addProduct}
             onUpdate={updateProduct}
             onDelete={deleteProduct}
@@ -358,7 +366,7 @@ export default function BuilderPage() {
 
     return (
       <Panel eyebrow="Paso 7" title="QR y publicar" text="URL simulada, tarjeta QR y logica visual por plan para que el MVP ya se pueda ensenar a un restaurante con confianza.">
-        <QRPanel data={data} publicUrl={publicUrl} onCopyLink={copyLink} />
+        <QRPanel data={data} publicUrl={publicUrl} onCopyLink={copyLink} isRegistered={false} />
       </Panel>
     );
   }
@@ -387,7 +395,6 @@ export default function BuilderPage() {
             <Link href="/login?next=/dashboard" className="inline-flex items-center gap-2 rounded-full bg-[#e85d04] px-4 py-2 text-sm font-bold text-white"><LogIn size={16} /> Guardar con cuenta</Link>
             <button type="button" onClick={restoreDemo} className="rounded-full bg-[#221812] px-4 py-2 text-sm font-bold text-white">Restaurar demo</button>
             <button type="button" onClick={clearChanges} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#6b594a]">Limpiar cambios</button>
-            <TutorialGuide activeStep={activeStep} onStepChange={setActiveStep} />
           </div>
         </div>
       </header>
@@ -406,12 +413,15 @@ export default function BuilderPage() {
             <div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:hidden">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview movil</p>
-                  <h2 className="text-2xl font-bold">Asi lo vera el cliente</h2>
+                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview de carta</p>
+                  <h2 className="text-2xl font-bold">Así lo verá el cliente</h2>
                 </div>
-                <Eye size={18} className="text-[#e85d04]" />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setPreviewMode("mobile")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "mobile" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}><Eye size={14} className="inline mr-1" />Móvil</button>
+                  <button type="button" onClick={() => setPreviewMode("desktop")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "desktop" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}><MonitorSmartphone size={14} className="inline mr-1" />Escritorio</button>
+                </div>
               </div>
-              <MobileMenuPreview data={data} branded={data.settings.showBranding} />
+              {previewMode === "mobile" ? <MobileMenuPreview data={data} branded={data.settings.plan === "free"} /> : <DesktopMenuPreview data={data} branded={data.settings.plan === "free"} />}
             </div>
           </div>
         }
@@ -419,12 +429,15 @@ export default function BuilderPage() {
           <div className="sticky top-24 space-y-3">
             <div className="flex items-center justify-between px-2">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview movil</p>
+                <p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview de carta</p>
                 <h2 className="text-xl font-bold">Tiempo real</h2>
               </div>
-              <Eye size={18} className="text-[#e85d04]" />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setPreviewMode("mobile")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "mobile" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}>Móvil</button>
+                <button type="button" onClick={() => setPreviewMode("desktop")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "desktop" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}>Escritorio</button>
+              </div>
             </div>
-            <MobileMenuPreview data={data} branded={data.settings.showBranding} />
+            {previewMode === "mobile" ? <MobileMenuPreview data={data} branded={data.settings.plan === "free"} /> : <DesktopMenuPreview data={data} branded={data.settings.plan === "free"} />}
           </div>
         }
       />

@@ -18,6 +18,30 @@ import {
 } from "@/lib/cartaviva-data";
 import { RealQrCode } from "@/components/cartaviva/RealQrCode";
 
+const headingFonts = {
+  fraunces: '"Fraunces", "Georgia", serif',
+  playfair: '"Playfair Display", "Georgia", serif',
+  sora: '"Sora", "Avenir Next", sans-serif',
+} as const;
+
+const bodyFonts = {
+  inter: '"Inter", "Segoe UI", sans-serif',
+  manrope: '"Manrope", "Segoe UI", sans-serif',
+  "plus-jakarta": '"Plus Jakarta Sans", "Segoe UI", sans-serif',
+} as const;
+
+const radiusClass = {
+  suave: "rounded-[1.2rem]",
+  medio: "rounded-[1.7rem]",
+  grande: "rounded-[2.2rem]",
+} as const;
+
+const densityClass = {
+  compacta: "space-y-4",
+  normal: "space-y-5",
+  amplia: "space-y-7",
+} as const;
+
 function groupLabel(group: MenuGroup) {
   return menuGroupOptions.find((item) => item.value === group)?.label || group;
 }
@@ -295,6 +319,8 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
   }, [language, sourceData]);
 
   const surface = templateSurface(data.restaurant.template);
+  const headingStyle = { fontFamily: headingFonts[data.restaurant.titleFont] };
+  const bodyStyle = { fontFamily: bodyFonts[data.restaurant.bodyFont] };
   const categories = getVisibleCategories(data.categories);
   const groupSections = categories
     .filter((category) => category.id !== "daily")
@@ -309,7 +335,7 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
       return acc;
     }, [])
     .filter((section) => section.categories.some((category) => getVisibleProducts(data.products, category.id).length > 0));
-  const brandingVisible = showBranding ?? data.settings.showBranding;
+  const brandingVisible = showBranding ?? data.settings.plan === "free";
   const whatsappHref = data.restaurant.whatsapp ? `https://wa.me/${data.restaurant.whatsapp.replace(/\D/g, "")}` : "";
   const compactMode = preview || data.restaurant.template === "compact";
   const contactRows = [
@@ -320,8 +346,8 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
   ].filter(Boolean) as Array<{ key: string; icon: ReactNode; value: string }>;
 
   return (
-    <div className={preview ? `${surface.shell}` : `${surface.shell} min-h-screen px-4 py-6`}>
-      <div className={preview ? `overflow-hidden ${surface.shell}` : `mx-auto max-w-5xl overflow-hidden rounded-[2.4rem] border ${surface.frame} shadow-[0_30px_90px_rgba(34,24,18,0.16)]`}>
+    <div className={preview ? `${surface.shell}` : `${surface.shell} min-h-screen px-4 py-6`} style={{ backgroundColor: data.restaurant.backgroundColor, ...bodyStyle }}>
+      <div className={preview ? `overflow-hidden ${surface.shell}` : `mx-auto max-w-5xl overflow-hidden rounded-[2.4rem] border ${surface.frame} shadow-[0_30px_90px_rgba(34,24,18,0.16)]`} style={{ backgroundColor: data.restaurant.backgroundColor }}>
         <header className="relative">
           <div className={`${preview ? "h-60" : "h-[360px]"} w-full overflow-hidden`}>
             <img src={data.restaurant.coverUrl || FALLBACK_IMAGE} alt="" className="h-full w-full object-cover" />
@@ -336,14 +362,14 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
               )}
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.32em] text-white/75">Miniweb del restaurante</p>
-                <h1 className={`${preview ? "text-3xl" : "text-5xl"} font-black tracking-tight`}>{data.restaurant.name}</h1>
+                <h1 className={`${preview ? "text-3xl" : "text-5xl"} font-black tracking-tight`} style={headingStyle}>{data.restaurant.name}</h1>
               </div>
             </div>
             <p className="mt-4 max-w-3xl text-sm font-medium leading-7 text-white/85 md:text-base">{data.restaurant.description}</p>
           </div>
         </header>
 
-        <section className={`space-y-5 p-4 md:p-6 ${surface.shell}`}>
+        <section className={`${densityClass[data.restaurant.visualDensity]} p-4 md:p-6 ${surface.shell}`}>
           {proposal ? (
             <div className="rounded-[1.7rem] border border-orange-200 bg-[#fff4e8] p-4 text-center text-sm font-black text-[#a3581c] shadow-sm">
               Esta es una propuesta visual, no la carta oficial del restaurante. Demo creada con {BRAND_NAME}.
@@ -372,7 +398,7 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
             </div>
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
               {data.restaurant.showWhatsapp && data.restaurant.whatsapp ? (
-                <a href={whatsappHref} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black text-white shadow-sm" style={{ backgroundColor: data.restaurant.primaryColor }}>
+                <a href={whatsappHref} className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-black text-white shadow-sm ${radiusClass[data.restaurant.borderRadiusStyle]}`} style={{ backgroundColor: data.restaurant.primaryColor }}>
                   <MessageCircle size={16} /> WhatsApp
                 </a>
               ) : null}
@@ -411,7 +437,7 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
               <section key={group.key} id={`grupo-${group.key}`} className="space-y-5">
                 <div className={`rounded-[1.7rem] px-5 py-4 ${surface.sectionHeader}`}>
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] opacity-70">Sección</p>
-                  <h2 className="text-2xl font-black">{group.label}</h2>
+                  <h2 className="text-2xl font-black" style={headingStyle}>{group.label}</h2>
                 </div>
                 {groupCategories.map((category) => {
                   const items = getVisibleProducts(data.products, category.id);
@@ -419,10 +445,10 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
                   return (
                     <section key={category.id} id={category.id} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <h3 className={`text-2xl font-black ${surface.heading}`}>{category.name}</h3>
+                        <h3 className={`text-2xl font-black ${surface.heading}`} style={headingStyle}>{category.name}</h3>
                         <span className={`whitespace-nowrap text-[11px] font-black uppercase tracking-[0.18em] ${surface.muted}`}>{items.length} productos</span>
                       </div>
-                      <div className={data.restaurant.template === "compact" ? "space-y-2" : data.restaurant.template === "visual" ? "grid gap-4 lg:grid-cols-2" : "grid gap-3 lg:grid-cols-2"}>
+                      <div className={data.restaurant.template === "compact" ? "space-y-2" : data.restaurant.template === "visual" ? "grid gap-4 xl:grid-cols-2" : "grid gap-3 xl:grid-cols-2"}>
                         {items.map((product) => <ProductCard key={product.id} product={product} data={data} compact={compactMode} surface={surface} />)}
                       </div>
                     </section>
@@ -435,7 +461,7 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
           <section className={`grid gap-4 rounded-[1.8rem] border p-5 shadow-sm md:grid-cols-[1fr_220px] ${surface.panel}`}>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.28em]" style={{ color: data.restaurant.primaryColor }}>Escanea nuestra carta</p>
-              <h3 className={`mt-2 text-2xl font-black ${surface.heading}`}>{data.restaurant.name}</h3>
+              <h3 className={`mt-2 text-2xl font-black ${surface.heading}`} style={headingStyle}>{data.restaurant.name}</h3>
               <p className={`mt-2 text-sm leading-7 ${surface.muted}`}>{proposal ? "Así podría verse la carta digital del restaurante." : "Carta digital con fotos, menú del día y productos actualizados."}</p>
               {brandingVisible ? (
                 <p className={`mt-3 text-xs font-black uppercase tracking-[0.14em] ${surface.muted}`}>

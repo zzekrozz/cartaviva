@@ -43,7 +43,7 @@ export default function DashboardPage() {
       await upsertProfile(supabase, currentUser);
       const [{ data: profile }, rows] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle(),
-        loadUserRestaurants(supabase, currentUser.id)
+        loadUserRestaurants(supabase, currentUser.id),
       ]);
       setBillingProfile(profile);
       setRestaurants(rows);
@@ -115,7 +115,7 @@ export default function DashboardPage() {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan, interval, trial: trial ? "one-euro" : "none" })
+        body: JSON.stringify({ plan, interval, trial: trial ? "one-euro" : "none" }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "No se pudo abrir Stripe.");
@@ -212,32 +212,36 @@ export default function DashboardPage() {
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-[2rem] border border-[#eadfce] bg-[#221812] p-5 text-white shadow-sm">
-            <p className="flex items-center gap-2 text-sm font-black"><BadgeEuro size={17} className="text-orange-200" /> Suscripción actual</p>
-            <p className="mt-2 text-sm font-semibold leading-7 text-white/70">
-              Plan: <span className="font-black text-white">{getPlanConfig(toPlanTier(billingProfile?.selected_plan)).name}</span> · Estado: <span className="font-black text-white">{billingProfile?.subscription_status || "sin pago"}</span>
-            </p>
-            {billingProfile?.current_period_end ? <p className="mt-1 text-xs font-bold text-white/60">Próxima renovación: {new Date(billingProfile.current_period_end).toLocaleDateString("es-ES")}</p> : null}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-black"><BadgeEuro size={17} className="text-orange-200" /> Plan actual</p>
+                <h2 className="mt-2 text-3xl font-black">
+                  {getPlanConfig(toPlanTier(billingProfile?.selected_plan)).name}
+                  {billingProfile?.trial_type === "one-euro" ? " en prueba" : ""}
+                </h2>
+                <p className="mt-3 text-sm font-semibold leading-7 text-white/72">
+                  Puedes construir gratis y activar este plan por 1 € + IVA el primer mes. Después {getPlanConfig(toPlanTier(billingProfile?.selected_plan)).monthlyPrice} €/mes + IVA.
+                </p>
+                {billingProfile?.current_period_end ? <p className="mt-2 text-xs font-bold text-white/60">Próxima renovación: {new Date(billingProfile.current_period_end).toLocaleDateString("es-ES")}</p> : null}
+              </div>
+              {billingProfile?.selected_plan && billingProfile?.selected_plan !== "free" ? <span className="rounded-full bg-[#fff1df] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#a3581c]">Primer mes por 1 € + IVA</span> : null}
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button onClick={() => startCheckout("carta-visual", "monthly", true)} disabled={Boolean(actionLoading)} className="rounded-full bg-[#e85d04] px-4 py-2 text-sm font-black text-white disabled:opacity-60">{actionLoading === "carta-visual-monthly" ? "Abriendo..." : "Probar Carta Visual por 1 €"}</button>
-              <button onClick={openPortal} disabled={Boolean(actionLoading)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#221812] disabled:opacity-60">Gestionar suscripción</button>
+              <button onClick={() => startCheckout("carta-visual", "monthly", true)} disabled={Boolean(actionLoading)} className="rounded-full bg-[#e85d04] px-4 py-2 text-sm font-black text-white disabled:opacity-60">{actionLoading === "carta-visual-monthly" ? "Abriendo..." : "Activar por 1 €"}</button>
+              <Link href="/probar" className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#221812]">Ver planes</Link>
+              <button onClick={openPortal} disabled={Boolean(actionLoading)} className="rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-black text-white disabled:opacity-60">Gestionar suscripción</button>
             </div>
           </div>
 
           <div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm">
-            <p className="flex items-center gap-2 text-sm font-black text-[#221812]"><Gift size={17} className="text-[#e85d04]" /> Plan y prueba</p>
-            <p className="mt-2 text-sm font-semibold leading-7 text-[#6b594a]">Empieza gratis para siempre o prueba cualquier plan de pago por 1 € el primer mes. El anual tiene 2 meses gratis.</p>
+            <p className="flex items-center gap-2 text-sm font-black text-[#221812]"><Gift size={17} className="text-[#e85d04]" /> Construye gratis</p>
+            <p className="mt-2 text-sm font-semibold leading-7 text-[#6b594a]">Prueba cualquier constructor sin pagar antes. Si el resultado te convence, activas el plan por 1 € + IVA el primer mes.</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/probar" className="rounded-full bg-[#e85d04] px-4 py-2 text-sm font-black text-white">Probar plan por 1 €</Link>
+              <Link href="/probar" className="rounded-full bg-[#e85d04] px-4 py-2 text-sm font-black text-white">Construir gratis</Link>
               <Link href="/#precios" className="rounded-full bg-[#221812] px-4 py-2 text-sm font-black text-white">Ver planes</Link>
             </div>
           </div>
-          <div className="rounded-[2rem] border border-orange-200 bg-[#fff4e8] p-5 shadow-sm">
-            <p className="flex items-center gap-2 text-sm font-black text-[#221812]"><BadgeEuro size={17} className="text-[#e85d04]" /> Oferta de bienvenida</p>
-            <p className="mt-2 text-sm font-semibold leading-7 text-[#6b594a]">Si continúas antes de terminar la prueba: 50% durante 3 meses. Menú Día 9,50 €, Carta Visual 14,50 €, Pro 24,50 € + IVA.</p>
-            <Link href="/probar" className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-black text-[#a3581c] shadow-sm">Pagar anual y ahorrar 2 meses</Link>
-          </div>
         </div>
-
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="rounded-[2rem] border border-[#eadfce] bg-[#221812] p-6 text-white shadow-sm">
@@ -269,7 +273,7 @@ export default function DashboardPage() {
                       <h2 className="text-2xl font-black">{restaurant.name}</h2>
                       <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${restaurant.status === "published" ? "bg-[#e7f7ed] text-[#166534]" : "bg-[#fff3e3] text-[#a3581c]"}`}>{restaurant.status === "published" ? "Publicada" : "Borrador"}</span>
                       <span className="rounded-full bg-[#f7efe4] px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#6b594a]">{plan.name}</span>
-                      {restaurant.trial_type === "one-euro" ? <span className="rounded-full bg-[#fff1df] px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#a3581c]">1 € primer mes · luego {plan.monthlyPrice} €/mes</span> : null}
+                      {restaurant.trial_type === "one-euro" ? <span className="rounded-full bg-[#fff1df] px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#a3581c]">1 € primer mes · después {plan.monthlyPrice} €/mes</span> : null}
                     </div>
                     <p className="mt-1 break-all text-sm font-semibold text-[#6b594a]">{publicUrl}</p>
                   </div>

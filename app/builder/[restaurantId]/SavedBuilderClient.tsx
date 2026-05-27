@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Cloud, Eye, Loader2, Palette, QrCode, Save, Settings2, Languages, Soup, Store, UploadCloud, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Cloud, Eye, Loader2, MonitorSmartphone, Palette, QrCode, Save, Settings2, Languages, Soup, Store, UploadCloud, UtensilsCrossed } from "lucide-react";
 import { BRAND_NAME } from "@/lib/brand";
 import {
   buildPublicPath,
@@ -16,7 +16,7 @@ import {
   type Category,
   type MenuTemplate,
   type PlanTier,
-  type Product
+  type Product,
 } from "@/lib/cartaviva-data";
 import { BuilderLayout } from "@/components/cartaviva/BuilderLayout";
 import { BuilderSidebar, type BuilderStep } from "@/components/cartaviva/BuilderSidebar";
@@ -28,10 +28,10 @@ import { DailyMenuEditor } from "@/components/cartaviva/DailyMenuEditor";
 import { WeeklyMenuEditor } from "@/components/cartaviva/WeeklyMenuEditor";
 import { QRPanel } from "@/components/cartaviva/QRPanel";
 import { MobileMenuPreview } from "@/components/cartaviva/MobileMenuPreview";
+import { DesktopMenuPreview } from "@/components/cartaviva/DesktopMenuPreview";
 import { SectionTabs } from "@/components/cartaviva/SectionTabs";
 import { TrialPlanBanner } from "@/components/cartaviva/TrialPlanBanner";
 import { TranslationEditor } from "@/components/cartaviva/TranslationEditor";
-import { TutorialGuide } from "@/components/cartaviva/TutorialGuide";
 import { getPlanConfig, supportsDailyMenuPhotos, supportsProductPhotos, type TrialType } from "@/lib/plan-config";
 import { createBrowserSupabaseClient, hasSupabaseConfig } from "@/lib/supabase/client";
 import { getCurrentUser, loadRestaurantState, saveRestaurantState, upsertProfile } from "@/lib/supabase/queries";
@@ -44,7 +44,7 @@ const steps: BuilderStep[] = [
   { id: "products", label: "Productos", icon: UtensilsCrossed },
   { id: "daily-menu", label: "Menú del día", icon: Soup },
   { id: "languages", label: "Idiomas", icon: Languages },
-  { id: "qr", label: "QR y publicar", icon: QrCode }
+  { id: "qr", label: "QR y publicar", icon: QrCode },
 ];
 
 function Panel({ eyebrow, title, text, children }: { eyebrow: string; title: string; text: string; children: ReactNode }) {
@@ -62,7 +62,7 @@ function stripImagesForFree(state: CartaVivaState): CartaVivaState {
   return normalizeState({
     ...state,
     products: state.products.map((product) => ({ ...product, imageUrl: "" })),
-    dailyMenu: { ...state.dailyMenu, coverImage: "", startersImage: "", mainsImage: "", dessertsImage: "", showImages: false }
+    dailyMenu: { ...state.dailyMenu, coverImage: "", startersImage: "", mainsImage: "", dessertsImage: "", showImages: false },
   });
 }
 
@@ -85,6 +85,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
   const [error, setError] = useState("");
   const [trialType, setTrialType] = useState<TrialType>("none");
   const [planNotice, setPlanNotice] = useState("");
+  const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -182,11 +183,11 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
 
   function updateDailyMenu<K extends keyof CartaVivaState["dailyMenu"]>(field: K, value: CartaVivaState["dailyMenu"][K]) {
     if (!dailyMenuPhotosEnabled && ["coverImage", "startersImage", "mainsImage", "dessertsImage"].includes(String(field)) && value) {
-      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     if (!dailyMenuPhotosEnabled && field === "showImages" && value) {
-      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     setStatusMessage("Cambios sin guardar");
@@ -217,7 +218,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
       return {
         ...current,
         categories: nextCategories,
-        products: current.products.map((product) => product.categoryId === id ? { ...product, categoryId: fallbackId } : product)
+        products: current.products.map((product) => product.categoryId === id ? { ...product, categoryId: fallbackId } : product),
       };
     });
   }
@@ -238,7 +239,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
       tags: [],
       allergens: [],
       status: "active",
-      order: data.products.length
+      order: data.products.length,
     };
     setStatusMessage("Cambios sin guardar");
     setData((current) => ({ ...current, products: [...current.products, product] }));
@@ -246,7 +247,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
 
   function updateProduct(id: string, updates: Partial<Product>) {
     if (!productPhotosEnabled && updates.imageUrl) {
-      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.");
+      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes activar un plan por 1 € + IVA el primer mes.");
       return;
     }
     setStatusMessage("Cambios sin guardar");
@@ -273,6 +274,11 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
     setData((current) => ({ ...current, products: moveEntity(current.products, id, direction) }));
   }
 
+  function clearFilters() {
+    setCategoryFilter("all");
+    setStatusFilter("all");
+  }
+
   function copyLink() {
     navigator.clipboard?.writeText(publicUrl);
   }
@@ -290,13 +296,14 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
 
     if (activeStep === "design") {
       return (
-        <Panel eyebrow="Paso 2" title="Diseño y posicionamiento" text="Plantillas, branding, plan visual y ajustes de la carta pública.">
+        <Panel eyebrow="Paso 2" title="Diseño y posicionamiento" text="Plantillas, marca del plan gratis y ajustes visuales para que la carta se sienta producto real.">
           <DesignSettings
             data={data}
             onTemplateChange={(value: MenuTemplate) => updateRestaurant("template", value)}
             onPlanChange={(value: PlanTier) => setData((current) => applyPlanToState(current, value))}
             onBooleanChange={(field, value) => updateSettingField(field, value)}
             onValueChange={(field, value) => updateSettingField(field, value)}
+            onRestaurantChange={updateRestaurant}
           />
         </Panel>
       );
@@ -316,6 +323,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
             statusFilter={statusFilter}
             onCategoryFilterChange={setCategoryFilter}
             onStatusFilterChange={setStatusFilter}
+            onClearFilters={clearFilters}
             onAdd={addProduct}
             onUpdate={updateProduct}
             onDelete={deleteProduct}
@@ -329,15 +337,19 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
     }
 
     if (activeStep === "daily-menu") {
-      return <Panel eyebrow="Paso 5" title="Menú del día" text="Destacado arriba, optimizado para móvil y con fotos opcionales."><DailyMenuEditor data={data} onChange={updateDailyMenu} uploadContext={{ restaurantId }} photosEnabled={dailyMenuPhotosEnabled} />
-          <div className="mt-6"><WeeklyMenuEditor data={data} onChange={(weeklyMenus) => setData({ ...data, weeklyMenus })} onUseToday={(menu) => setData({ ...data, dailyMenu: { ...data.dailyMenu, title: menu.title, price: menu.price, schedule: menu.schedule, starters: menu.starters, mains: menu.mains, desserts: menu.desserts, drinkIncluded: menu.drinkIncluded, note: menu.note } })} /></div></Panel>;
+      return (
+        <Panel eyebrow="Paso 5" title="Menú del día" text="Destacado arriba, optimizado para móvil y con fotos opcionales.">
+          <DailyMenuEditor data={data} onChange={updateDailyMenu} uploadContext={{ restaurantId }} photosEnabled={dailyMenuPhotosEnabled} />
+          <div className="mt-6"><WeeklyMenuEditor data={data} onChange={(weeklyMenus) => setData({ ...data, weeklyMenus })} onUseToday={(menu) => setData({ ...data, dailyMenu: { ...data.dailyMenu, title: menu.title, price: menu.price, schedule: menu.schedule, starters: menu.starters, mains: menu.mains, desserts: menu.desserts, drinkIncluded: menu.drinkIncluded, note: menu.note } })} /></div>
+        </Panel>
+      );
     }
 
     if (activeStep === "languages") {
-      return <Panel eyebrow="Paso 6" title="Idiomas" text="Traducciones manuales para Restaurante Pro, guardadas en Supabase y visibles en la carta pública."><TranslationEditor data={data} onChange={setData} onNotice={setPlanNotice} /></Panel>;
+      return <Panel eyebrow="Paso 6" title="Idiomas" text="Traducciones manuales claras y acordes al plan activo."><TranslationEditor data={data} onChange={setData} onNotice={setPlanNotice} /></Panel>;
     }
 
-    return <Panel eyebrow="Paso 7" title="QR y publicar" text="Copia el enlace, revisa el QR y publica la carta para que sea visible por slug."><QRPanel data={data} publicUrl={publicUrl} onCopyLink={copyLink} /></Panel>;
+    return <Panel eyebrow="Paso 7" title="QR y publicar" text="Copia el enlace, revisa el QR y publica la carta para que sea visible por slug."><QRPanel data={data} publicUrl={publicUrl} onCopyLink={copyLink} isRegistered /></Panel>;
   }
 
   if (loading) {
@@ -365,7 +377,6 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
             <button type="button" disabled={saving} onClick={() => saveToSupabase(false)} className="inline-flex items-center gap-2 rounded-full bg-[#221812] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"><Save size={16} /> Guardar</button>
             <button type="button" disabled={saving} onClick={() => saveToSupabase(true)} className="inline-flex items-center gap-2 rounded-full bg-[#e85d04] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"><UploadCloud size={16} /> Publicar</button>
             <Link href={publicPath} className="rounded-full border border-[#d9cbb8] bg-white px-4 py-2 text-sm font-bold">Vista pública</Link>
-            <TutorialGuide activeStep={activeStep} onStepChange={setActiveStep} storageKey={`mesacarta_tutorial_completed_${restaurantId}`} />
             <button type="button" onClick={signOut} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#6b594a]">Salir</button>
           </div>
         </div>
@@ -377,8 +388,8 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
 
       <BuilderLayout
         sidebar={<div className="hidden lg:block"><BuilderSidebar steps={steps} activeStep={activeStep} onChange={setActiveStep} /></div>}
-        editor={<div className="space-y-5"><TrialPlanBanner data={data} trialType={trialType} />{planNotice ? <div className="rounded-[1.5rem] border border-orange-200 bg-[#fff4e8] px-5 py-4 text-sm font-black text-[#a3581c]">{planNotice}</div> : null}{renderStep()}<div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:hidden"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview móvil</p><h2 className="text-2xl font-bold">Así lo verá el cliente</h2></div><Eye size={18} className="text-[#e85d04]" /></div><MobileMenuPreview data={data} branded={data.settings.showBranding} /></div></div>}
-        preview={<div className="sticky top-24 space-y-3"><div className="flex items-center justify-between px-2"><div><p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview móvil</p><h2 className="text-xl font-bold">Tiempo real</h2></div><Eye size={18} className="text-[#e85d04]" /></div><MobileMenuPreview data={data} branded={data.settings.showBranding} /></div>}
+        editor={<div className="space-y-5"><TrialPlanBanner data={data} trialType={trialType} />{planNotice ? <div className="rounded-[1.5rem] border border-orange-200 bg-[#fff4e8] px-5 py-4 text-sm font-black text-[#a3581c]">{planNotice}</div> : null}{renderStep()}<div className="rounded-[2rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:hidden"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview de carta</p><h2 className="text-2xl font-bold">Así lo verá el cliente</h2></div><div className="flex gap-2"><button type="button" onClick={() => setPreviewMode("mobile")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "mobile" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}><Eye size={14} className="mr-1 inline" />Móvil</button><button type="button" onClick={() => setPreviewMode("desktop")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "desktop" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}><MonitorSmartphone size={14} className="mr-1 inline" />Escritorio</button></div></div>{previewMode === "mobile" ? <MobileMenuPreview data={data} branded={data.settings.plan === "free"} /> : <DesktopMenuPreview data={data} branded={data.settings.plan === "free"} />}</div></div>}
+        preview={<div className="sticky top-24 space-y-3"><div className="flex items-center justify-between px-2"><div><p className="text-xs font-bold uppercase tracking-[0.26em] text-[#a08d7d]">Preview de carta</p><h2 className="text-xl font-bold">Tiempo real</h2></div><div className="flex gap-2"><button type="button" onClick={() => setPreviewMode("mobile")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "mobile" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}>Móvil</button><button type="button" onClick={() => setPreviewMode("desktop")} className={`rounded-full px-3 py-2 text-xs font-black ${previewMode === "desktop" ? "bg-[#221812] text-white" : "bg-[#fff4e8] text-[#6b594a]"}`}>Escritorio</button></div></div>{previewMode === "mobile" ? <MobileMenuPreview data={data} branded={data.settings.plan === "free"} /> : <DesktopMenuPreview data={data} branded={data.settings.plan === "free"} />}</div>}
       />
     </div>
   );

@@ -46,7 +46,7 @@ export function DailyMenuEditor({
   uploadContext?: Omit<ImageUploadContext, "folder">;
   photosEnabled?: boolean;
 }) {
-  const photoMessage = "Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.";
+  const photoMessage = "Las fotos del menú del día están disponibles desde Carta Visual. Puedes activar un plan por 1 € + IVA el primer mes.";
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-[#eadfce] bg-white shadow-sm">

@@ -5,7 +5,17 @@ import type { CartaVivaState, WeeklyMenu } from "@/lib/cartaviva-data";
 import { uid } from "@/lib/cartaviva-data";
 import { getPlanConfig } from "@/lib/plan-config";
 
-const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const dayLabels: Record<number, string> = {
+  0: "Domingo",
+  1: "Lunes",
+  2: "Martes",
+  3: "Miércoles",
+  4: "Jueves",
+  5: "Viernes",
+  6: "Sábado",
+};
+
+const displayOrder = [1, 2, 3, 4, 5, 6, 0];
 
 type Props = {
   data: CartaVivaState;
@@ -14,23 +24,24 @@ type Props = {
 };
 
 function blankMenu(day: number): WeeklyMenu {
-  return { id: uid("weekly"), weekday: day, enabled: true, title: `Menú del ${days[day].toLowerCase()}`, price: "", schedule: "13:00 - 16:00", starters: "", mains: "", desserts: "", drinkIncluded: true, note: "" };
+  return { id: uid("weekly"), weekday: day, enabled: true, title: `Menú del ${dayLabels[day].toLowerCase()}`, price: "", schedule: "13:00 - 16:00", starters: "", mains: "", desserts: "", drinkIncluded: true, note: "" };
 }
 
 export function WeeklyMenuEditor({ data, onChange, onUseToday }: Props) {
   const plan = getPlanConfig(data.settings.plan);
   const isPro = plan.id === "restaurant-pro";
-  const menus = days.map((_, weekday) => data.weeklyMenus.find((menu) => menu.weekday === weekday) || blankMenu(weekday));
+  const menus = displayOrder.map((weekday) => data.weeklyMenus.find((menu) => menu.weekday === weekday) || blankMenu(weekday));
 
   function update(weekday: number, patch: Partial<WeeklyMenu>) {
     const existing = data.weeklyMenus.find((menu) => menu.weekday === weekday) || blankMenu(weekday);
-    const next = [...data.weeklyMenus.filter((menu) => menu.weekday !== weekday), { ...existing, ...patch }].sort((a, b) => a.weekday - b.weekday);
+    const next = [...data.weeklyMenus.filter((menu) => menu.weekday !== weekday), { ...existing, ...patch }].sort((a, b) => displayOrder.indexOf(a.weekday) - displayOrder.indexOf(b.weekday));
     onChange(next);
   }
 
-  function duplicateFromPrevious(weekday: number) {
-    const previous = menus[(weekday + 6) % 7];
-    update(weekday, { ...previous, id: menus[weekday].id, weekday, title: `Menú del ${days[weekday].toLowerCase()}` });
+  function duplicateFromPrevious(index: number) {
+    const previous = menus[(index + menus.length - 1) % menus.length];
+    const weekday = menus[index].weekday;
+    update(weekday, { ...previous, id: menus[index].id, weekday, title: `Menú del ${dayLabels[weekday].toLowerCase()}` });
   }
 
   return (
@@ -47,15 +58,15 @@ export function WeeklyMenuEditor({ data, onChange, onUseToday }: Props) {
       </div>
 
       <div className={`grid gap-4 ${!isPro ? "pointer-events-none opacity-55" : ""}`}>
-        {menus.map((menu) => (
+        {menus.map((menu, index) => (
           <article key={menu.weekday} className="rounded-[1.8rem] border border-[#eadfce] bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#a08d7d]">{days[menu.weekday]}</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#a08d7d]">{dayLabels[menu.weekday]}</p>
                 <input value={menu.title} onChange={(event) => update(menu.weekday, { title: event.target.value })} className="mt-1 w-full bg-transparent text-xl font-black text-[#221812] outline-none" />
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => duplicateFromPrevious(menu.weekday)} className="inline-flex items-center gap-2 rounded-full bg-[#fff4e8] px-3 py-2 text-xs font-black text-[#a3581c]"><Copy size={14} /> Duplicar anterior</button>
+                <button type="button" onClick={() => duplicateFromPrevious(index)} className="inline-flex items-center gap-2 rounded-full bg-[#fff4e8] px-3 py-2 text-xs font-black text-[#a3581c]"><Copy size={14} /> Duplicar anterior</button>
                 <button type="button" onClick={() => onUseToday?.(menu)} className="rounded-full bg-[#221812] px-3 py-2 text-xs font-black text-white">Usar este menú hoy</button>
               </div>
             </div>

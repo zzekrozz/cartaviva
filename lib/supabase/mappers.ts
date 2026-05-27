@@ -33,6 +33,13 @@ export type RestaurantRow = {
   show_schedule?: boolean | null;
   template: MenuTemplate | null;
   primary_color: string | null;
+  secondary_color?: string | null;
+  background_color?: string | null;
+  title_font?: "fraunces" | "playfair" | "sora" | null;
+  body_font?: "inter" | "manrope" | "plus-jakarta" | null;
+  button_style?: "rounded" | "pill" | "soft-shadow" | null;
+  border_radius_style?: "suave" | "medio" | "grande" | null;
+  visual_density?: "compacta" | "normal" | "amplia" | null;
   plan: PlanTier | null;
   selected_plan?: PlanTier | null;
   trial_type?: string | null;
@@ -194,7 +201,14 @@ export function stateFromRows(
       showInstagram: restaurant.show_instagram ?? true,
       showSchedule: restaurant.show_schedule ?? true,
       primaryColor: restaurant.primary_color || "#e85d04",
-      template: restaurant.template || "visual"
+      secondaryColor: restaurant.secondary_color || "#221812",
+      backgroundColor: restaurant.background_color || "#fffaf3",
+      template: restaurant.template || "visual",
+      titleFont: restaurant.title_font || "fraunces",
+      bodyFont: restaurant.body_font || "manrope",
+      buttonStyle: restaurant.button_style || "pill",
+      borderRadiusStyle: restaurant.border_radius_style || "medio",
+      visualDensity: restaurant.visual_density || "normal"
     },
     categories: categories.map((category, index): Category => ({
       id: category.id,
@@ -280,6 +294,13 @@ export function restaurantPayloadFromState(state: CartaVivaState, ownerId: strin
     show_schedule: state.restaurant.showSchedule,
     template: state.restaurant.template,
     primary_color: state.restaurant.primaryColor,
+    secondary_color: state.restaurant.secondaryColor,
+    background_color: state.restaurant.backgroundColor,
+    title_font: state.restaurant.titleFont,
+    body_font: state.restaurant.bodyFont,
+    button_style: state.restaurant.buttonStyle,
+    border_radius_style: state.restaurant.borderRadiusStyle,
+    visual_density: state.restaurant.visualDensity,
     plan: state.settings.plan,
     selected_plan: state.settings.plan,
     status: state.status || (state.published ? "published" : "draft"),

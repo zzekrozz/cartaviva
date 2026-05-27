@@ -34,7 +34,14 @@ export type Restaurant = {
   showInstagram: boolean;
   showSchedule: boolean;
   primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
   template: MenuTemplate;
+  titleFont: "fraunces" | "playfair" | "sora";
+  bodyFont: "inter" | "manrope" | "plus-jakarta";
+  buttonStyle: "rounded" | "pill" | "soft-shadow";
+  borderRadiusStyle: "suave" | "medio" | "grande";
+  visualDensity: "compacta" | "normal" | "amplia";
 };
 
 export type Category = {
@@ -234,7 +241,14 @@ export const defaultCartaVivaState: CartaVivaState = {
     showInstagram: true,
     showSchedule: true,
     primaryColor: "#e85d04",
+    secondaryColor: "#221812",
+    backgroundColor: "#fffaf3",
     template: "visual",
+    titleFont: "fraunces",
+    bodyFont: "manrope",
+    buttonStyle: "pill",
+    borderRadiusStyle: "medio",
+    visualDensity: "normal",
   },
   categories: [
     {

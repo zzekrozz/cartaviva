@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { BillingInterval, PlanId } from "@/lib/plan-config";
+import { getAutomaticCouponId, getTrialPriceId, type BillingInterval, type PlanId } from "@/lib/plan-config";
 
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -10,9 +10,8 @@ export function getStripe() {
 export function getPriceId(plan: PlanId, interval: BillingInterval, trial?: string | null) {
   const normalized = plan;
   if (trial === "one-euro" && interval === "monthly") {
-    if (normalized === "menu-day") return process.env.STRIPE_PRICE_MENU_DAY_TRIAL_ONE_EURO || process.env.STRIPE_PRICE_MENU_DAY_MONTHLY;
-    if (normalized === "carta-visual") return process.env.STRIPE_PRICE_VISUAL_TRIAL_ONE_EURO || process.env.STRIPE_PRICE_VISUAL_MONTHLY;
-    if (normalized === "restaurant-pro") return process.env.STRIPE_PRICE_PRO_TRIAL_ONE_EURO || process.env.STRIPE_PRICE_PRO_MONTHLY;
+    const trialPriceId = getTrialPriceId(normalized);
+    if (trialPriceId) return trialPriceId;
   }
   if (normalized === "menu-day") {
     if (interval === "quarterly") return process.env.STRIPE_PRICE_MENU_DAY_QUARTERLY;
@@ -30,6 +29,13 @@ export function getPriceId(plan: PlanId, interval: BillingInterval, trial?: stri
     return process.env.STRIPE_PRICE_PRO_MONTHLY;
   }
   return null;
+}
+
+export function getCheckoutDiscount(plan: PlanId, interval: BillingInterval, trial?: string | null) {
+  if (trial !== "one-euro" || interval !== "monthly") return undefined;
+  const coupon = getAutomaticCouponId(plan);
+  if (!coupon) return undefined;
+  return [{ coupon }];
 }
 
 export async function createStripePortalSession(customerId: string) {

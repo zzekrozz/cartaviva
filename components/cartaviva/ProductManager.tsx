@@ -8,7 +8,7 @@ const presetTagOptions = tagOptions.filter((option) => option !== "Otro");
 
 function TagGroup({
   product,
-  onUpdate
+  onUpdate,
 }: {
   product: Product;
   onUpdate: (updates: Partial<Product>) => void;
@@ -19,7 +19,7 @@ function TagGroup({
 
   function toggleTag(option: string) {
     if (option === "Otro") {
-      onUpdate({ tags: isCustom ? [] : [customValue] });
+      onUpdate({ tags: isCustom ? [] : [customValue || "Etiqueta personalizada"] });
       return;
     }
     onUpdate({ tags: selectedTag === option ? [] : [option] });
@@ -57,7 +57,7 @@ function TagGroup({
 
 function AllergenGroup({
   product,
-  onUpdate
+  onUpdate,
 }: {
   product: Product;
   onUpdate: (updates: Partial<Product>) => void;
@@ -68,7 +68,7 @@ function AllergenGroup({
     onUpdate({
       allergens: product.allergens.includes(value)
         ? product.allergens.filter((item) => item !== value)
-        : [...product.allergens, value]
+        : [...product.allergens, value],
     });
   }
 
@@ -122,13 +122,14 @@ export function ProductManager({
   statusFilter,
   onCategoryFilterChange,
   onStatusFilterChange,
+  onClearFilters,
   onAdd,
   onUpdate,
   onDelete,
   onDuplicate,
   onMove,
   uploadContext,
-  photosEnabled = true
+  photosEnabled = true,
 }: {
   products: Product[];
   categories: Category[];
@@ -136,6 +137,7 @@ export function ProductManager({
   statusFilter: string;
   onCategoryFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
+  onClearFilters: () => void;
   onAdd: () => void;
   onUpdate: (id: string, updates: Partial<Product>) => void;
   onDelete: (id: string) => void;
@@ -145,7 +147,7 @@ export function ProductManager({
   photosEnabled?: boolean;
 }) {
   const realCategories = categories.filter((category) => category.id !== "daily");
-  const photoMessage = "Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.";
+  const photoMessage = "Las fotos de productos están disponibles desde Menú Día. Puedes activar un plan por 1 € + IVA el primer mes.";
 
   return (
     <div className="space-y-4">
@@ -155,7 +157,7 @@ export function ProductManager({
             <p className="text-sm font-black text-[#221812]">Gestor de productos</p>
             <p className="mt-1 text-xs font-semibold text-[#8a796a]">Cafés, bebidas, tapas o platos. Todo cuenta como producto de carta.</p>
           </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
             <select value={categoryFilter} onChange={(event) => onCategoryFilterChange(event.target.value)} className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm font-bold outline-none focus:border-[#e85d04]">
               <option value="all">Todas las categorías</option>
               {realCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
@@ -166,6 +168,9 @@ export function ProductManager({
               <option value="soldout">Agotados</option>
               <option value="hidden">Ocultos</option>
             </select>
+            <button type="button" onClick={onClearFilters} className="rounded-full bg-white px-4 py-3 text-sm font-black text-[#6b594a] shadow-sm">
+              Limpiar filtros
+            </button>
             <button type="button" onClick={onAdd} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#e85d04] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:scale-[1.01]">
               <Plus size={16} /> Crear producto
             </button>
@@ -175,22 +180,25 @@ export function ProductManager({
 
       {products.map((product) => (
         <article key={product.id} className="overflow-hidden rounded-[2rem] border border-[#eadfce] bg-white shadow-sm transition hover:shadow-md">
-          <div className="grid gap-0 lg:grid-cols-[180px_1fr]">
+          <div className="grid gap-0 xl:grid-cols-[190px_1fr]">
             <div className="bg-[#fff6eb] p-3">
               {product.imageUrl ? (
-                <img src={product.imageUrl} alt="" className="h-44 w-full rounded-[1.35rem] object-cover lg:h-full" />
+                <img src={product.imageUrl} alt="" className="h-44 w-full rounded-[1.35rem] object-cover xl:h-full" />
               ) : (
-                <div className="flex h-44 flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-[#e8d8c2] text-center text-xs font-black uppercase tracking-[0.2em] text-[#a08d7d] lg:h-full">
+                <div className="flex h-44 flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-[#e8d8c2] text-center text-xs font-black uppercase tracking-[0.2em] text-[#a08d7d] xl:h-full">
                   <ImageIcon size={24} className="mb-2" /> Sin foto
                 </div>
               )}
             </div>
 
             <div className="p-4 md:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${statusClass(product.status)}`}>
-                  {product.status === "active" ? "Activo" : product.status === "soldout" ? "Agotado" : "Oculto"}
-                </span>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8a796a]">Estado y visibilidad</p>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em] ${statusClass(product.status)}`}>
+                    {product.status === "active" ? "Activo" : product.status === "soldout" ? "Agotado" : "Oculto"}
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => onMove(product.id, "first")} className="rounded-full bg-[#fff1df] px-3 py-2 text-xs font-black text-[#a3581c]">Arriba</button>
                   <button type="button" onClick={() => onMove(product.id, "up")} className="rounded-full bg-[#f1e7d8] px-3 py-2 text-xs font-black text-[#6b594a]"><ArrowUp size={14} className="inline" /> Subir</button>

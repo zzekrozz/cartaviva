@@ -38,6 +38,13 @@ create table if not exists public.restaurants (
   show_schedule boolean not null default true,
   template text not null default 'visual' check (template in ('visual', 'elegant', 'compact', 'dark-premium', 'mediterranean')),
   primary_color text not null default '#e85d04',
+  secondary_color text not null default '#221812',
+  background_color text not null default '#fffaf3',
+  title_font text default 'fraunces',
+  body_font text default 'manrope',
+  button_style text default 'pill',
+  border_radius_style text default 'medio',
+  visual_density text default 'normal',
   plan text not null default 'free' check (plan in ('free', 'menu-day', 'carta-visual', 'restaurant-pro')),
   selected_plan text not null default 'free' check (selected_plan in ('free', 'menu-day', 'carta-visual', 'restaurant-pro')),
   trial_type text null check (trial_type is null or trial_type in ('one-euro')),
@@ -321,6 +328,13 @@ alter table public.restaurants add column if not exists show_phone boolean not n
 alter table public.restaurants add column if not exists show_address boolean not null default true;
 alter table public.restaurants add column if not exists show_instagram boolean not null default true;
 alter table public.restaurants add column if not exists show_schedule boolean not null default true;
+alter table public.restaurants add column if not exists secondary_color text not null default '#221812';
+alter table public.restaurants add column if not exists background_color text not null default '#fffaf3';
+alter table public.restaurants add column if not exists title_font text default 'fraunces';
+alter table public.restaurants add column if not exists body_font text default 'manrope';
+alter table public.restaurants add column if not exists button_style text default 'pill';
+alter table public.restaurants add column if not exists border_radius_style text default 'medio';
+alter table public.restaurants add column if not exists visual_density text default 'normal';
 alter table public.categories add column if not exists group_label text default '';
 
 alter table public.restaurants drop constraint if exists restaurants_status_check;
