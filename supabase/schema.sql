@@ -31,6 +31,11 @@ create table if not exists public.restaurants (
   address text default '',
   instagram text default '',
   schedule text default '',
+  show_whatsapp boolean not null default true,
+  show_phone boolean not null default true,
+  show_address boolean not null default true,
+  show_instagram boolean not null default true,
+  show_schedule boolean not null default true,
   template text not null default 'visual' check (template in ('visual', 'elegant', 'compact', 'dark-premium', 'mediterranean')),
   primary_color text not null default '#e85d04',
   plan text not null default 'free' check (plan in ('free', 'menu-day', 'carta-visual', 'restaurant-pro')),
@@ -58,7 +63,8 @@ create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   name text not null,
-  group_name text not null default 'comida' check (group_name in ('comida', 'bebidas', 'vinos', 'desayunos', 'cocteles', 'menu-dia')),
+  group_name text not null default 'comida' check (group_name in ('comida', 'bebidas', 'vinos', 'desayunos', 'cocteles', 'menu-dia', 'otro')),
+  group_label text default '',
   visible boolean not null default true,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
@@ -310,6 +316,12 @@ alter table public.restaurants add column if not exists stripe_subscription_id t
 alter table public.restaurants add column if not exists subscription_status text;
 alter table public.restaurants add column if not exists current_period_end timestamptz;
 alter table public.restaurants add column if not exists billing_interval text;
+alter table public.restaurants add column if not exists show_whatsapp boolean not null default true;
+alter table public.restaurants add column if not exists show_phone boolean not null default true;
+alter table public.restaurants add column if not exists show_address boolean not null default true;
+alter table public.restaurants add column if not exists show_instagram boolean not null default true;
+alter table public.restaurants add column if not exists show_schedule boolean not null default true;
+alter table public.categories add column if not exists group_label text default '';
 
 alter table public.restaurants drop constraint if exists restaurants_status_check;
 alter table public.restaurants add constraint restaurants_status_check check (status in ('draft', 'demo', 'proposal', 'published'));

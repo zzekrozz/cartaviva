@@ -19,7 +19,7 @@ export function PricingSection({ defaultInterval = "monthly" }: { defaultInterva
       <div className="mx-auto max-w-3xl text-center">
         <p className="text-xs font-black uppercase tracking-[0.32em] text-[#e85d04]">Precios</p>
         <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Planes para empezar pequeño y crecer sin rehacer tu carta</h2>
-        <p className="mt-4 text-base font-medium leading-8 text-[#6b594a]">Gratis para siempre, primer mes por 1 € en planes de pago y opciones trimestrales o anuales para incluir montaje inicial.</p>
+        <p className="mt-4 text-base font-medium leading-8 text-[#6b594a]">Construye gratis, activa desde 1 € el primer mes y luego elige mensual, trimestral o anual sin mezclar el mensaje principal del builder.</p>
       </div>
 
       <div className="mx-auto mt-8 flex max-w-xl rounded-full border border-[#eadfce] bg-white p-1 shadow-sm">
@@ -43,8 +43,18 @@ export function PricingSection({ defaultInterval = "monthly" }: { defaultInterva
               </div>
               <p className={`mt-3 text-sm font-semibold leading-7 ${plan.recommended ? "text-white/70" : "text-[#6b594a]"}`}>{plan.description}</p>
               <div className="mt-5">
-                <p className="text-4xl font-black tracking-tight">{displayPriceForInterval(plan, interval)}</p>
-                {paid ? <p className={`mt-1 text-xs font-bold ${plan.recommended ? "text-white/60" : "text-[#7b6a5b]"}`}>+ IVA · mensual: {plan.monthlyPrice} €/mes</p> : <p className={`mt-1 text-xs font-bold ${plan.recommended ? "text-white/60" : "text-[#7b6a5b]"}`}>Gratis para siempre</p>}
+                {paid ? (
+                  <>
+                    <p className={`text-sm font-black line-through ${plan.recommended ? "text-white/55" : "text-[#8a796a]"}`}>{plan.monthlyPrice} €/mes + IVA</p>
+                    <p className="mt-1 text-4xl font-black tracking-tight">1 € el primer mes + IVA</p>
+                    <p className={`mt-2 text-xs font-bold ${plan.recommended ? "text-white/70" : "text-[#7b6a5b]"}`}>Después: {displayPriceForInterval(plan, interval)} + IVA</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-4xl font-black tracking-tight">{displayPriceForInterval(plan, interval)}</p>
+                    <p className={`mt-1 text-xs font-bold ${plan.recommended ? "text-white/60" : "text-[#7b6a5b]"}`}>Gratis para siempre</p>
+                  </>
+                )}
                 {paid && interval === "yearly" ? <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#fff4e8] px-3 py-2 text-xs font-black text-[#a3581c]"><Coffee size={14} /> {plan.annualDailyCost} · menos que un café</p> : null}
                 {paid && interval === "quarterly" ? <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#fff4e8] px-3 py-2 text-xs font-black text-[#a3581c]"><Gift size={14} /> Montaje inicial incluido en lanzamiento</p> : null}
               </div>
@@ -52,7 +62,8 @@ export function PricingSection({ defaultInterval = "monthly" }: { defaultInterva
                 {plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm font-semibold leading-6"><Check size={17} className={plan.recommended ? "mt-0.5 shrink-0 text-orange-200" : "mt-0.5 shrink-0 text-[#e85d04]"} />{feature}</li>)}
                 {id === "restaurant-pro" ? <li className="flex gap-2 text-sm font-semibold leading-6"><Sparkles size={17} className="mt-0.5 shrink-0 text-orange-200" />Si necesitas más de 150 productos: consultar</li> : null}
               </ul>
-              <Link href={href} className={`mt-7 rounded-full px-5 py-3 text-center text-sm font-black ${plan.recommended ? "bg-white text-[#221812]" : "bg-[#221812] text-white"}`}>{paid ? plan.cta : "Empezar gratis"}</Link>
+              <Link href={href} className={`mt-7 rounded-full px-5 py-3 text-center text-sm font-black ${plan.recommended ? "bg-white text-[#221812]" : "bg-[#221812] text-white"}`}>{paid ? "Construir ahora gratis" : "Empezar gratis"}</Link>
+              {paid ? <p className={`mt-3 text-center text-xs font-bold ${plan.recommended ? "text-white/70" : "text-[#7b6a5b]"}`}>Si te gusta cómo queda, puedes activar el plan desde 1 € el primer mes.</p> : null}
             </article>
           );
         })}

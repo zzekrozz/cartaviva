@@ -14,6 +14,12 @@ type Props = {
 
 export function RealQrCode({ value, color = "#221812", label = "QR de la carta", fileName = "qr-carta.png", showDownload = true }: Props) {
   const [src, setSrc] = useState("");
+  const [debouncedColor, setDebouncedColor] = useState(color);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedColor(color), 120);
+    return () => window.clearTimeout(timeout);
+  }, [color]);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,7 +29,7 @@ export function RealQrCode({ value, color = "#221812", label = "QR de la carta",
           width: 900,
           margin: 2,
           color: {
-            dark: color,
+            dark: debouncedColor,
             light: "#fffaf3"
           },
           errorCorrectionLevel: "M"
@@ -37,7 +43,7 @@ export function RealQrCode({ value, color = "#221812", label = "QR de la carta",
     return () => {
       cancelled = true;
     };
-  }, [color, value]);
+  }, [debouncedColor, value]);
 
   return (
     <div className="flex flex-col items-center gap-3">

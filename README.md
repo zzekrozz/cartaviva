@@ -223,3 +223,34 @@ Esta versión prepara MesaCarta para vender como beta: fotos como gancho princip
 
 ### Variables nuevas
 Consulta `.env.local.example` para Stripe trimestral, Resend, admin, WhatsApp de contacto y oferta de lanzamiento.
+
+## Cómo probar planes visualmente
+
+1. Entra en `/probar`.
+2. Elige `Carta Visual`.
+3. Confirma que abre `/builder?plan=visual&trial=one-euro`.
+4. Verifica que el builder desbloquea visualmente las funciones del plan 29.
+5. Intenta guardar o publicar.
+6. Confirma que el flujo pide login o activación cuando corresponde.
+
+## Reglas clave de esta versión
+
+- Gratis permite logo y portada del local, pero no fotos de productos.
+- Gratis permite WhatsApp, dirección, horario, alérgenos y QR con marca.
+- Carta Visual permite 1 idioma extra editable.
+- Restaurante Pro permite hasta 3 idiomas extra editables.
+- Los alérgenos están disponibles en todos los planes.
+- El menú del día usa tabs clicables en móvil.
+
+## Cómo probar UX y planes
+
+- Gratis con logo/portada pero sin fotos de productos: entra en `/builder?plan=free`, sube logo o portada y confirma que funciona; intenta subir foto a un producto y debe salir el aviso comercial del plan.
+- QR color sin lag: en Datos del restaurante mueve el color principal y comprueba que el selector responde fluido y que el QR tarda un instante en regenerarse, no en cada pixel.
+- Ocultar datos de contacto: en Datos del restaurante activa/desactiva mostrar WhatsApp, teléfono, dirección, Instagram y horario; revisa preview y carta pública.
+- Idiomas solo en 29/49: en gratis o Menú Día debe salir bloque promocional; en Carta Visual deja 1 idioma; en Pro hasta 3.
+- Preview móvil sin textos rotos: revisa dirección, horario, teléfono, Instagram, tabs y productos largos en el mockup móvil.
+- Etiquetas solo 1 + Otro: en Productos elige una etiqueta, cambia a otra y prueba `Otro` con texto personalizado.
+- Alérgenos personalizados: en Productos usa `+ Añadir alérgeno` y confirma que aparece en preview y carta pública.
+- Tabs del menú del día: en preview móvil pulsa `Primeros`, `Segundos` y `Postres` y confirma que cambian.
+- Plan visual desde `/probar`: cada tarjeta debe llevar a `/builder` con `plan` y `trial` correctos, sin obligar a pagar para construir.
+- Construir gratis y activar desde 1 € el primer mes: revisa copy en `/probar` y pricing; el constructor se prueba gratis y el `1 €` aparece solo como primer mes, no como precio permanente.

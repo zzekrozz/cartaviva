@@ -2,6 +2,7 @@ import { Crown, Languages, Paintbrush } from "lucide-react";
 import { planOptions, type CartaVivaState, type MenuTemplate, type PlanTier } from "@/lib/cartaviva-data";
 import { PlanBadge } from "@/components/cartaviva/PlanBadge";
 import { TemplateSelector } from "@/components/cartaviva/TemplateSelector";
+import { extraLanguagesPlanMessage } from "@/lib/plan-config";
 
 export function DesignSettings({
   data,
@@ -76,14 +77,14 @@ export function DesignSettings({
         <div className="mb-4 flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-white text-[#e85d04]"><Languages size={20} /></span>
           <div>
-            <p className="text-sm font-black text-[#221812]">Restaurante Pro: idiomas editables</p>
-            <p className="text-xs font-semibold text-[#8a796a]">Visual de fase futura, sin traducción automática todavía.</p>
+            <p className="text-sm font-black text-[#221812]">Idiomas y revisión manual</p>
+            <p className="text-xs font-semibold text-[#8a796a]">El builder muestra el alcance real del plan activo sin textos confusos.</p>
           </div>
         </div>
         <textarea value={data.settings.manualTranslationNotes} onChange={(event) => onValueChange("manualTranslationNotes", event.target.value)} className="min-h-28 w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm font-semibold leading-6 outline-none focus:border-[#e85d04]" />
         <div className="mt-4 flex items-center gap-2 rounded-[1.3rem] bg-white px-4 py-3 text-sm font-bold text-[#6b594a]">
           <Crown size={16} className="text-[#e85d04]" />
-          49 €/mes + IVA: 2 idiomas extra editables manualmente, QR por sección y más personalización.
+          {extraLanguagesPlanMessage(data.settings.plan)}
         </div>
       </div>
     </div>

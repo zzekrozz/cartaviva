@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Clock3, Instagram, MapPin, MessageCircle, Phone, QrCode } from "lucide-react";
 import { BRAND_DOMAIN_PLACEHOLDER, BRAND_NAME } from "@/lib/brand";
 import {
@@ -20,6 +20,18 @@ import { RealQrCode } from "@/components/cartaviva/RealQrCode";
 
 function groupLabel(group: MenuGroup) {
   return menuGroupOptions.find((item) => item.value === group)?.label || group;
+}
+
+function categoryGroupKey(category: Category) {
+  return category.group === "otro"
+    ? `otro:${(category.customGroupLabel || category.name || "otros").trim().toLowerCase()}`
+    : category.group;
+}
+
+function categoryGroupLabel(category: Category) {
+  return category.group === "otro"
+    ? (category.customGroupLabel || category.name || "Otros").trim()
+    : groupLabel(category.group);
 }
 
 type Surface = {
@@ -135,10 +147,6 @@ function templateSurface(template: CartaVivaState["restaurant"]["template"]): Su
   }
 }
 
-function productsByGroup(categories: Category[], group: MenuGroup) {
-  return categories.filter((category) => category.group === group && category.id !== "daily");
-}
-
 function FakeQr({ color = "#221812", compact = false }: { color?: string; compact?: boolean }) {
   const cells = Array.from({ length: 49 }, (_, index) => index);
   return (
@@ -154,12 +162,14 @@ function FakeQr({ color = "#221812", compact = false }: { color?: string; compac
 }
 
 function DailyMenuPreview({ data, compact, surface }: { data: CartaVivaState; compact?: boolean; surface: Surface }) {
+  const [activeTab, setActiveTab] = useState("primeros");
   const blocks = [
     { key: "primeros", label: "Primeros", items: splitLines(data.dailyMenu.starters), image: data.dailyMenu.startersImage },
     { key: "segundos", label: "Segundos", items: splitLines(data.dailyMenu.mains), image: data.dailyMenu.mainsImage },
     { key: "postres", label: "Postres", items: splitLines(data.dailyMenu.desserts), image: data.dailyMenu.dessertsImage }
   ];
   const menuImage = data.dailyMenu.coverImage || FALLBACK_IMAGE;
+  const activeBlock = blocks.find((block) => block.key === activeTab) || blocks[0];
 
   return (
     <section className={`overflow-hidden rounded-[2rem] border ${surface.softPanel} ${surface.cardHover}`}>
@@ -183,16 +193,16 @@ function DailyMenuPreview({ data, compact, surface }: { data: CartaVivaState; co
 
       <div className={`border-b ${surface.border} px-4 pt-4`}>
         <div className="flex gap-2 overflow-x-auto pb-3">
-          {blocks.map((block, index) => (
-            <span key={block.key} className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-black ${index === 0 ? surface.activeChip : surface.chip}`}>
+          {blocks.map((block) => (
+            <button key={block.key} type="button" onClick={() => setActiveTab(block.key)} className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs font-black ${activeTab === block.key ? surface.activeChip : surface.chip}`}>
               {block.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>
 
       <div className={`grid gap-3 p-4 ${compact ? "" : "md:grid-cols-3"}`}>
-        {blocks.map((block) => (
+        {(compact ? [activeBlock] : blocks).map((block) => (
           <article key={block.key} className={`rounded-[1.45rem] border p-4 ${surface.panel}`}>
             {data.dailyMenu.showImages && block.image ? (
               <img src={block.image} alt="" className="mb-3 h-24 w-full rounded-[1rem] object-cover" />
@@ -223,18 +233,20 @@ function ProductCard({ product, data, compact, surface }: { product: Product; da
       <div className={`${visualLarge ? "p-4" : "p-3"} ${showImage && !visualLarge ? "grid gap-3 sm:grid-cols-[96px_1fr]" : ""}`}>
         {showImage && !visualLarge ? <img src={product.imageUrl || FALLBACK_IMAGE} alt="" className="h-24 w-full rounded-[1.1rem] object-cover" /> : null}
         <div className="min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap gap-1.5">
               {soldOut ? <span className="rounded-full bg-[#221812] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">Agotado</span> : null}
               {data.settings.showTags ? product.tags.slice(0, compact ? 1 : 2).map((tag) => (
                 <span key={tag} className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${isDark ? "border-white/10 bg-white/10 text-[#f0b35b]" : "border-[#f4d9bb] bg-[#fff1df] text-[#c2410c]"}`}>
                   {tag}
                 </span>
               )) : null}
+              </div>
+              <h3 className={`mt-2 break-words ${compact ? "text-base" : "text-lg"} font-black leading-6 ${surface.heading}`}>{product.name}</h3>
             </div>
             <span className={`whitespace-nowrap text-lg font-black ${surface.price}`}>{product.price}</span>
           </div>
-          <h3 className={`mt-2 ${compact ? "text-base" : "text-lg"} font-black ${surface.heading}`}>{product.name}</h3>
           <p className={`mt-1 text-sm leading-6 ${surface.muted}`}>{product.description}</p>
           {data.settings.showAllergens && product.allergens.length ? (
             <p className={`mt-2 text-[11px] font-black uppercase tracking-[0.12em] ${surface.muted}`}>
@@ -284,10 +296,28 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
 
   const surface = templateSurface(data.restaurant.template);
   const categories = getVisibleCategories(data.categories);
-  const groups = menuGroupOptions.filter((group) => productsByGroup(categories, group.value).some((category) => getVisibleProducts(data.products, category.id).length > 0));
+  const groupSections = categories
+    .filter((category) => category.id !== "daily")
+    .reduce<Array<{ key: string; label: string; categories: Category[] }>>((acc, category) => {
+      const key = categoryGroupKey(category);
+      const existing = acc.find((item) => item.key === key);
+      if (existing) {
+        existing.categories.push(category);
+      } else {
+        acc.push({ key, label: categoryGroupLabel(category), categories: [category] });
+      }
+      return acc;
+    }, [])
+    .filter((section) => section.categories.some((category) => getVisibleProducts(data.products, category.id).length > 0));
   const brandingVisible = showBranding ?? data.settings.showBranding;
-  const whatsappHref = `https://wa.me/${data.restaurant.whatsapp.replace(/\D/g, "")}`;
+  const whatsappHref = data.restaurant.whatsapp ? `https://wa.me/${data.restaurant.whatsapp.replace(/\D/g, "")}` : "";
   const compactMode = preview || data.restaurant.template === "compact";
+  const contactRows = [
+    data.restaurant.showAddress && data.restaurant.address ? { key: "address", icon: <MapPin size={16} />, value: data.restaurant.address } : null,
+    data.restaurant.showSchedule && data.restaurant.schedule ? { key: "schedule", icon: <Clock3 size={16} />, value: data.restaurant.schedule } : null,
+    data.restaurant.showPhone && data.restaurant.phone ? { key: "phone", icon: <Phone size={16} />, value: data.restaurant.phone } : null,
+    data.restaurant.showInstagram && data.restaurant.instagram ? { key: "instagram", icon: <Instagram size={16} />, value: data.restaurant.instagram } : null
+  ].filter(Boolean) as Array<{ key: string; icon: ReactNode; value: string }>;
 
   return (
     <div className={preview ? `${surface.shell}` : `${surface.shell} min-h-screen px-4 py-6`}>
@@ -333,29 +363,37 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
 
           <div className={`grid gap-3 rounded-[1.7rem] border p-4 ${surface.panel} shadow-sm lg:grid-cols-[1.3fr_1fr]`}>
             <div className="flex flex-wrap gap-2">
-              {groups.map((group, index) => (
-                <a key={group.value} href={`#grupo-${group.value}`} className={`rounded-full border px-4 py-2 text-sm font-black ${index === 0 ? surface.activeChip : surface.chip}`}>
+              {groupSections.map((group, index) => (
+                <a key={group.key} href={`#grupo-${group.key}`} className={`rounded-full border px-4 py-2 text-sm font-black ${index === 0 ? surface.activeChip : surface.chip}`}>
                   {group.label}
                 </a>
               ))}
               {data.dailyMenu.enabled ? <a href="#menu-dia" className={`rounded-full border px-4 py-2 text-sm font-black ${surface.chip}`}>Menú del día</a> : null}
             </div>
             <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
-              <a href={whatsappHref} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black text-white shadow-sm" style={{ backgroundColor: data.restaurant.primaryColor }}>
-                <MessageCircle size={16} /> WhatsApp
-              </a>
+              {data.restaurant.showWhatsapp && data.restaurant.whatsapp ? (
+                <a href={whatsappHref} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black text-white shadow-sm" style={{ backgroundColor: data.restaurant.primaryColor }}>
+                  <MessageCircle size={16} /> WhatsApp
+                </a>
+              ) : null}
               <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black ${surface.chip}`}>
                 <QrCode size={16} /> QR listo
               </span>
             </div>
           </div>
 
-          <div className={`grid gap-3 rounded-[1.7rem] border p-4 text-sm shadow-sm md:grid-cols-2 xl:grid-cols-4 ${surface.panel} ${surface.muted}`}>
-            <p className="flex items-center gap-2"><MapPin size={16} /> {data.restaurant.address}</p>
-            <p className="flex items-center gap-2"><Clock3 size={16} /> {data.restaurant.schedule}</p>
-            <p className="flex items-center gap-2"><Phone size={16} /> {data.restaurant.phone}</p>
-            <p className="flex items-center gap-2"><Instagram size={16} /> {data.restaurant.instagram}</p>
-          </div>
+          {contactRows.length ? (
+            <div className={`rounded-[1.7rem] border p-4 text-sm shadow-sm ${surface.panel} ${surface.muted}`}>
+              <div className="space-y-3">
+                {contactRows.map((row) => (
+                  <p key={row.key} className="flex items-start gap-3 break-words leading-6">
+                    <span className="mt-1 shrink-0">{row.icon}</span>
+                    <span className="min-w-0 flex-1">{row.value}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {data.dailyMenu.enabled ? <div id="menu-dia"><DailyMenuPreview data={data} compact={preview} surface={surface} /></div> : null}
 
@@ -367,13 +405,13 @@ export function PublicMenuView({ data: sourceData, preview = false, showBranding
             ))}
           </div>
 
-          {groups.map((group) => {
-            const groupCategories = productsByGroup(categories, group.value);
+          {groupSections.map((group) => {
+            const groupCategories = group.categories;
             return (
-              <section key={group.value} id={`grupo-${group.value}`} className="space-y-5">
+              <section key={group.key} id={`grupo-${group.key}`} className="space-y-5">
                 <div className={`rounded-[1.7rem] px-5 py-4 ${surface.sectionHeader}`}>
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] opacity-70">Sección</p>
-                  <h2 className="text-2xl font-black">{groupLabel(group.value)}</h2>
+                  <h2 className="text-2xl font-black">{group.label}</h2>
                 </div>
                 {groupCategories.map((category) => {
                   const items = getVisibleProducts(data.products, category.id);

@@ -1,23 +1,109 @@
+import { useState } from "react";
 import { ArrowDown, ArrowUp, Copy, ImageIcon, Plus, Trash2 } from "lucide-react";
 import { allergenOptions, tagOptions, type Category, type Product, type ProductStatus } from "@/lib/cartaviva-data";
 import type { ImageUploadContext } from "@/lib/image-tools";
 import { ImageUploadField } from "@/components/cartaviva/ImageUploadField";
 
-function ChipGroup({ title, selected, options, onToggle }: { title: string; selected: string[]; options: string[]; onToggle: (value: string) => void }) {
+const presetTagOptions = tagOptions.filter((option) => option !== "Otro");
+
+function TagGroup({
+  product,
+  onUpdate
+}: {
+  product: Product;
+  onUpdate: (updates: Partial<Product>) => void;
+}) {
+  const selectedTag = product.tags[0] || "";
+  const isCustom = Boolean(selectedTag) && !presetTagOptions.includes(selectedTag);
+  const customValue = isCustom ? selectedTag : "";
+
+  function toggleTag(option: string) {
+    if (option === "Otro") {
+      onUpdate({ tags: isCustom ? [] : [customValue] });
+      return;
+    }
+    onUpdate({ tags: selectedTag === option ? [] : [option] });
+  }
+
   return (
     <div className="rounded-[1.45rem] border border-[#eadfce] bg-[#fffdf9] p-4">
-      <p className="mb-3 text-sm font-black text-[#221812]">{title}</p>
+      <p className="mb-3 text-sm font-black text-[#221812]">Etiqueta principal</p>
       <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
+        {[...presetTagOptions, "Otro"].map((option) => {
+          const active = option === "Otro" ? isCustom : selectedTag === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggleTag(option)}
+              className={`rounded-full px-3 py-2 text-xs font-black transition ${active ? "bg-[#221812] text-white" : "bg-[#f1e7d8] text-[#6b594a] hover:bg-[#fff1df]"}`}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+      {isCustom ? (
+        <input
+          value={customValue}
+          onChange={(event) => onUpdate({ tags: event.target.value ? [event.target.value] : [] })}
+          placeholder="Escribe tu etiqueta personalizada"
+          className="mt-3 w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm font-bold outline-none focus:border-[#e85d04]"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function AllergenGroup({
+  product,
+  onUpdate
+}: {
+  product: Product;
+  onUpdate: (updates: Partial<Product>) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function toggleAllergen(value: string) {
+    onUpdate({
+      allergens: product.allergens.includes(value)
+        ? product.allergens.filter((item) => item !== value)
+        : [...product.allergens, value]
+    });
+  }
+
+  function addCustomAllergen() {
+    const value = draft.trim();
+    if (!value || product.allergens.includes(value)) return;
+    onUpdate({ allergens: [...product.allergens, value] });
+    setDraft("");
+  }
+
+  return (
+    <div className="rounded-[1.45rem] border border-[#eadfce] bg-[#fffdf9] p-4">
+      <p className="mb-3 text-sm font-black text-[#221812]">Alérgenos</p>
+      <div className="flex flex-wrap gap-2">
+        {allergenOptions.map((option) => (
           <button
             key={option}
             type="button"
-            onClick={() => onToggle(option)}
-            className={`rounded-full px-3 py-2 text-xs font-black transition ${selected.includes(option) ? "bg-[#221812] text-white" : "bg-[#f1e7d8] text-[#6b594a] hover:bg-[#fff1df]"}`}
+            onClick={() => toggleAllergen(option)}
+            className={`rounded-full px-3 py-2 text-xs font-black transition ${product.allergens.includes(option) ? "bg-[#221812] text-white" : "bg-[#f1e7d8] text-[#6b594a] hover:bg-[#fff1df]"}`}
           >
             {option}
           </button>
         ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Mostaza, sésamo, moluscos..."
+          className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm font-bold outline-none focus:border-[#e85d04]"
+        />
+        <button type="button" onClick={addCustomAllergen} className="rounded-full bg-[#fff1df] px-4 py-3 text-sm font-black text-[#a3581c]">
+          + Añadir alérgeno
+        </button>
       </div>
     </div>
   );
@@ -59,6 +145,7 @@ export function ProductManager({
   photosEnabled?: boolean;
 }) {
   const realCategories = categories.filter((category) => category.id !== "daily");
+  const photoMessage = "Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.";
 
   return (
     <div className="space-y-4">
@@ -132,15 +219,15 @@ export function ProductManager({
                     uploadContext={uploadContext ? { ...uploadContext, folder: `products/${product.id}` } : undefined}
                     maxWidth={1400}
                     disabled={!photosEnabled}
-                    disabledMessage="Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes."
+                    disabledMessage={photoMessage}
                   />
                 </div>
                 <textarea value={product.description} onChange={(event) => onUpdate(product.id, { description: event.target.value })} className="min-h-24 rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-semibold leading-6 outline-none focus:border-[#e85d04] md:col-span-2" placeholder="Descripción" />
               </div>
 
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <ChipGroup title="Etiquetas base" selected={product.tags} options={tagOptions} onToggle={(value) => onUpdate(product.id, { tags: product.tags.includes(value) ? product.tags.filter((item) => item !== value) : [...product.tags, value] })} />
-                <ChipGroup title="Alérgenos" selected={product.allergens} options={allergenOptions} onToggle={(value) => onUpdate(product.id, { allergens: product.allergens.includes(value) ? product.allergens.filter((item) => item !== value) : [...product.allergens, value] })} />
+                <TagGroup product={product} onUpdate={(updates) => onUpdate(product.id, updates)} />
+                <AllergenGroup product={product} onUpdate={(updates) => onUpdate(product.id, updates)} />
               </div>
 
               <div className="mt-4 flex flex-wrap justify-end gap-2">

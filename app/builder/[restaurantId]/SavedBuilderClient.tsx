@@ -32,7 +32,7 @@ import { SectionTabs } from "@/components/cartaviva/SectionTabs";
 import { TrialPlanBanner } from "@/components/cartaviva/TrialPlanBanner";
 import { TranslationEditor } from "@/components/cartaviva/TranslationEditor";
 import { TutorialGuide } from "@/components/cartaviva/TutorialGuide";
-import { getPlanConfig, type TrialType } from "@/lib/plan-config";
+import { getPlanConfig, supportsDailyMenuPhotos, supportsProductPhotos, type TrialType } from "@/lib/plan-config";
 import { createBrowserSupabaseClient, hasSupabaseConfig } from "@/lib/supabase/client";
 import { getCurrentUser, loadRestaurantState, saveRestaurantState, upsertProfile } from "@/lib/supabase/queries";
 import { uuid } from "@/lib/supabase/mappers";
@@ -61,7 +61,6 @@ function Panel({ eyebrow, title, text, children }: { eyebrow: string; title: str
 function stripImagesForFree(state: CartaVivaState): CartaVivaState {
   return normalizeState({
     ...state,
-    restaurant: { ...state.restaurant, logoUrl: "", coverUrl: "" },
     products: state.products.map((product) => ({ ...product, imageUrl: "" })),
     dailyMenu: { ...state.dailyMenu, coverImage: "", startersImage: "", mainsImage: "", dessertsImage: "", showImages: false }
   });
@@ -90,6 +89,10 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeStep]);
 
   useEffect(() => {
     async function load() {
@@ -123,7 +126,8 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
   }, [restaurantId, router]);
 
   const planConfig = getPlanConfig(data.settings.plan);
-  const photosEnabled = planConfig.hasPhotos;
+  const productPhotosEnabled = supportsProductPhotos(data.settings.plan);
+  const dailyMenuPhotosEnabled = supportsDailyMenuPhotos(data.settings.plan);
   const publicPath = useMemo(() => buildPublicPath(data.restaurant.slug), [data.restaurant.slug]);
   const publicUrl = useMemo(() => `${origin}${publicPath}`, [origin, publicPath]);
 
@@ -158,11 +162,11 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
     }
   }, [data, restaurantId, router, user?.id]);
 
-  function updateRestaurant(field: keyof CartaVivaState["restaurant"], value: string) {
+  function updateRestaurant<K extends keyof CartaVivaState["restaurant"]>(field: K, value: CartaVivaState["restaurant"][K]) {
     setStatusMessage("Cambios sin guardar");
     setData((current) => {
       const restaurant = { ...current.restaurant, [field]: value };
-      if (field === "name") restaurant.slug = slugify(value);
+      if (field === "name") restaurant.slug = slugify(String(value));
       return { ...current, restaurant };
     });
   }
@@ -172,13 +176,25 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
     setData((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
   }
 
+  function updateSettingField<K extends keyof CartaVivaState["settings"]>(field: K, value: CartaVivaState["settings"][K]) {
+    updateSettings({ [field]: value } as Partial<CartaVivaState["settings"]>);
+  }
+
   function updateDailyMenu<K extends keyof CartaVivaState["dailyMenu"]>(field: K, value: CartaVivaState["dailyMenu"][K]) {
+    if (!dailyMenuPhotosEnabled && ["coverImage", "startersImage", "mainsImage", "dessertsImage"].includes(String(field)) && value) {
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      return;
+    }
+    if (!dailyMenuPhotosEnabled && field === "showImages" && value) {
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      return;
+    }
     setStatusMessage("Cambios sin guardar");
     setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, [field]: value } }));
   }
 
   function addCategory() {
-    const category: Category = { id: uuid(), name: "Nueva categoría", visible: true, order: data.categories.length, group: "comida" };
+    const category: Category = { id: uuid(), name: "Nueva categoría", visible: true, order: data.categories.length, group: "comida", customGroupLabel: "" };
     setStatusMessage("Cambios sin guardar");
     setData((current) => ({ ...current, categories: [...current.categories, category] }));
   }
@@ -229,6 +245,10 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
   }
 
   function updateProduct(id: string, updates: Partial<Product>) {
+    if (!productPhotosEnabled && updates.imageUrl) {
+      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.");
+      return;
+    }
     setStatusMessage("Cambios sin guardar");
     setData((current) => ({ ...current, products: current.products.map((product) => product.id === id ? { ...product, ...updates } : product) }));
   }
@@ -265,7 +285,7 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
 
   function renderStep() {
     if (activeStep === "restaurant") {
-      return <Panel eyebrow="Paso 1" title="Información del restaurante" text="Nombre, portada, contacto, horario y color principal. Estos datos ya se guardan en Supabase."><RestaurantForm data={data} onChange={updateRestaurant} uploadContext={{ restaurantId }} photosEnabled={photosEnabled} /></Panel>;
+      return <Panel eyebrow="Paso 1" title="Información del restaurante" text="Nombre, portada, contacto, horario y color principal. Estos datos ya se guardan en Supabase."><RestaurantForm data={data} onChange={updateRestaurant} uploadContext={{ restaurantId }} /></Panel>;
     }
 
     if (activeStep === "design") {
@@ -274,9 +294,9 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
           <DesignSettings
             data={data}
             onTemplateChange={(value: MenuTemplate) => updateRestaurant("template", value)}
-            onPlanChange={(value: PlanTier) => updateSettings({ plan: value, showBranding: value === "free" })}
-            onBooleanChange={(field, value) => updateSettings({ [field]: value })}
-            onValueChange={(field, value) => updateSettings({ [field]: value })}
+            onPlanChange={(value: PlanTier) => setData((current) => applyPlanToState(current, value))}
+            onBooleanChange={(field, value) => updateSettingField(field, value)}
+            onValueChange={(field, value) => updateSettingField(field, value)}
           />
         </Panel>
       );
@@ -302,14 +322,14 @@ export default function SavedBuilderClient({ restaurantId }: { restaurantId: str
             onDuplicate={duplicateProduct}
             onMove={moveProduct}
             uploadContext={{ restaurantId }}
-            photosEnabled={photosEnabled}
+            photosEnabled={productPhotosEnabled}
           />
         </Panel>
       );
     }
 
     if (activeStep === "daily-menu") {
-      return <Panel eyebrow="Paso 5" title="Menú del día" text="Destacado arriba, optimizado para móvil y con fotos opcionales."><DailyMenuEditor data={data} onChange={updateDailyMenu} uploadContext={{ restaurantId }} photosEnabled={photosEnabled} />
+      return <Panel eyebrow="Paso 5" title="Menú del día" text="Destacado arriba, optimizado para móvil y con fotos opcionales."><DailyMenuEditor data={data} onChange={updateDailyMenu} uploadContext={{ restaurantId }} photosEnabled={dailyMenuPhotosEnabled} />
           <div className="mt-6"><WeeklyMenuEditor data={data} onChange={(weeklyMenus) => setData({ ...data, weeklyMenus })} onUseToday={(menu) => setData({ ...data, dailyMenu: { ...data.dailyMenu, title: menu.title, price: menu.price, schedule: menu.schedule, starters: menu.starters, mains: menu.mains, desserts: menu.desserts, drinkIncluded: menu.drinkIncluded, note: menu.note } })} /></div></Panel>;
     }
 

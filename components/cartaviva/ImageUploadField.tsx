@@ -102,14 +102,15 @@ export function ImageUploadField({ label, value, onChange, hint, uploadContext, 
             className="inline-flex w-full items-center justify-center gap-2 rounded-[1.2rem] bg-[#221812] px-4 py-3 text-sm font-black text-white disabled:opacity-60"
           >
             {busy ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            {disabled ? "Fotos bloqueadas en este plan" : busy ? "Procesando..." : "Subir foto"}
+            {disabled ? "Fotos no disponibles en este plan" : busy ? "Procesando..." : "Subir foto"}
           </button>
           <input
             value={value}
             onChange={(event) => disabled ? setError(disabledMessage || "Las fotos no están disponibles en este plan.") : onChange(event.target.value)}
-            placeholder={disabled ? "Fotos disponibles desde Menú Día" : "O pega una URL de imagen"}
+            placeholder={disabled ? "Disponible desde un plan compatible" : "O pega una URL de imagen"}
             className="w-full rounded-[1.2rem] border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-xs font-semibold outline-none focus:border-[#e85d04]"
           />
+          {disabled && disabledMessage ? <p className="text-xs font-bold leading-5 text-[#a3581c]">{disabledMessage}</p> : null}
           {message ? <p className="text-xs font-bold leading-5 text-[#6b594a]">{message}</p> : null}
           {error ? <p className="text-xs font-bold leading-5 text-red-600">{error}</p> : null}
         </div>

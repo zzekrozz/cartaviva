@@ -32,20 +32,26 @@ export function CategoryManager({
       <div className="grid gap-3">
         {categories.map((category, index) => (
           <article key={category.id} className="rounded-[1.8rem] border border-[#eadfce] bg-white p-4 shadow-sm transition hover:shadow-md">
-            <div className="grid gap-3 lg:grid-cols-[44px_1.1fr_210px_132px_auto] lg:items-center">
+            <div className="grid gap-3 lg:grid-cols-[44px_1.1fr_210px_132px_auto] lg:items-start">
               <div className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] bg-[#fff1df] text-sm font-black text-[#a3581c]">{String(index + 1).padStart(2, "0")}</div>
-              <input
-                value={category.name}
-                onChange={(event) => onUpdate(category.id, { name: event.target.value })}
-                className="rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-bold outline-none transition focus:border-[#e85d04] focus:bg-white"
-              />
-              <select
-                value={category.group}
-                onChange={(event) => onUpdate(category.id, { group: event.target.value as MenuGroup })}
-                className="rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-bold outline-none transition focus:border-[#e85d04] focus:bg-white"
-              >
-                {menuGroupOptions.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
-              </select>
+              <input value={category.name} onChange={(event) => onUpdate(category.id, { name: event.target.value })} className="rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-bold outline-none transition focus:border-[#e85d04] focus:bg-white" />
+              <div className="space-y-3">
+                <select
+                  value={category.group}
+                  onChange={(event) => onUpdate(category.id, { group: event.target.value as MenuGroup, customGroupLabel: event.target.value === "otro" ? (category.customGroupLabel || "") : "" })}
+                  className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-bold outline-none transition focus:border-[#e85d04] focus:bg-white"
+                >
+                  {menuGroupOptions.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
+                </select>
+                {category.group === "otro" ? (
+                  <input
+                    value={category.customGroupLabel || ""}
+                    onChange={(event) => onUpdate(category.id, { customGroupLabel: event.target.value })}
+                    placeholder="Ej. Brunch, Helados, Menú infantil"
+                    className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3 text-sm font-bold outline-none transition focus:border-[#e85d04] focus:bg-white"
+                  />
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => onUpdate(category.id, { visible: !category.visible })}

@@ -26,6 +26,11 @@ export type RestaurantRow = {
   address: string | null;
   instagram: string | null;
   schedule: string | null;
+  show_whatsapp?: boolean | null;
+  show_phone?: boolean | null;
+  show_address?: boolean | null;
+  show_instagram?: boolean | null;
+  show_schedule?: boolean | null;
   template: MenuTemplate | null;
   primary_color: string | null;
   plan: PlanTier | null;
@@ -55,6 +60,7 @@ export type CategoryRow = {
   restaurant_id: string;
   name: string;
   group_name: MenuGroup | null;
+  group_label?: string | null;
   visible: boolean | null;
   sort_order: number | null;
 };
@@ -182,6 +188,11 @@ export function stateFromRows(
       address: restaurant.address || "",
       instagram: restaurant.instagram || "",
       schedule: restaurant.schedule || "",
+      showWhatsapp: restaurant.show_whatsapp ?? true,
+      showPhone: restaurant.show_phone ?? true,
+      showAddress: restaurant.show_address ?? true,
+      showInstagram: restaurant.show_instagram ?? true,
+      showSchedule: restaurant.show_schedule ?? true,
       primaryColor: restaurant.primary_color || "#e85d04",
       template: restaurant.template || "visual"
     },
@@ -190,7 +201,8 @@ export function stateFromRows(
       name: category.name,
       visible: category.visible ?? true,
       order: typeof category.sort_order === "number" ? category.sort_order : index,
-      group: category.group_name || "comida"
+      group: category.group_name || "comida",
+      customGroupLabel: category.group_label || ""
     })),
     products: products.map((product, index): Product => ({
       id: product.id,
@@ -261,6 +273,11 @@ export function restaurantPayloadFromState(state: CartaVivaState, ownerId: strin
     address: state.restaurant.address,
     instagram: state.restaurant.instagram,
     schedule: state.restaurant.schedule,
+    show_whatsapp: state.restaurant.showWhatsapp,
+    show_phone: state.restaurant.showPhone,
+    show_address: state.restaurant.showAddress,
+    show_instagram: state.restaurant.showInstagram,
+    show_schedule: state.restaurant.showSchedule,
     template: state.restaurant.template,
     primary_color: state.restaurant.primaryColor,
     plan: state.settings.plan,
@@ -277,6 +294,7 @@ export function categoriesPayloadFromState(state: CartaVivaState, restaurantId: 
     restaurant_id: restaurantId,
     name: category.name,
     group_name: category.group,
+    group_label: category.customGroupLabel || null,
     visible: category.visible,
     sort_order: category.order
   }));

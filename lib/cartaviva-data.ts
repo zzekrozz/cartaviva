@@ -11,7 +11,8 @@ export type MenuGroup =
   | "vinos"
   | "desayunos"
   | "cocteles"
-  | "menu-dia";
+  | "menu-dia"
+  | "otro";
 export type PlanTier = "free" | "menu-day" | "carta-visual" | "restaurant-pro";
 export type LanguageCode = "es" | "en" | "fr" | "de" | "it" | "pt";
 export type RestaurantStatus = "draft" | "demo" | "proposal" | "published";
@@ -27,6 +28,11 @@ export type Restaurant = {
   address: string;
   instagram: string;
   schedule: string;
+  showWhatsapp: boolean;
+  showPhone: boolean;
+  showAddress: boolean;
+  showInstagram: boolean;
+  showSchedule: boolean;
   primaryColor: string;
   template: MenuTemplate;
 };
@@ -37,6 +43,7 @@ export type Category = {
   visible: boolean;
   order: number;
   group: MenuGroup;
+  customGroupLabel?: string;
 };
 
 export type Product = {
@@ -136,6 +143,7 @@ export const menuGroupOptions: { value: MenuGroup; label: string }[] = [
   { value: "desayunos", label: "Desayunos" },
   { value: "cocteles", label: "Cócteles" },
   { value: "menu-dia", label: "Menú del día" },
+  { value: "otro", label: "Otro" },
 ];
 
 export const templateOptions: {
@@ -189,6 +197,7 @@ export const tagOptions = [
   "Sin lactosa",
   "Para compartir",
   "Especialidad",
+  "Otro",
 ];
 
 export const allergenOptions = [
@@ -219,6 +228,11 @@ export const defaultCartaVivaState: CartaVivaState = {
     address: "Calle Aduar 14, Marbella",
     instagram: "@casaamelia",
     schedule: "Lunes a domingo · 12:00 - 23:30",
+    showWhatsapp: true,
+    showPhone: true,
+    showAddress: true,
+    showInstagram: true,
+    showSchedule: true,
     primaryColor: "#e85d04",
     template: "visual",
   },
@@ -229,15 +243,17 @@ export const defaultCartaVivaState: CartaVivaState = {
       visible: true,
       order: 0,
       group: "menu-dia",
+      customGroupLabel: "",
     },
-    { id: "tapas", name: "Tapas", visible: true, order: 1, group: "comida" },
-    { id: "carnes", name: "Carnes", visible: true, order: 2, group: "comida" },
+    { id: "tapas", name: "Tapas", visible: true, order: 1, group: "comida", customGroupLabel: "" },
+    { id: "carnes", name: "Carnes", visible: true, order: 2, group: "comida", customGroupLabel: "" },
     {
       id: "postres",
       name: "Postres",
       visible: true,
       order: 3,
       group: "comida",
+      customGroupLabel: "",
     },
     {
       id: "bebidas",
@@ -245,8 +261,9 @@ export const defaultCartaVivaState: CartaVivaState = {
       visible: true,
       order: 4,
       group: "bebidas",
+      customGroupLabel: "",
     },
-    { id: "cafes", name: "Cafés", visible: true, order: 5, group: "bebidas" },
+    { id: "cafes", name: "Cafés", visible: true, order: 5, group: "bebidas", customGroupLabel: "" },
   ],
   products: [
     {
@@ -561,6 +578,7 @@ export function normalizeState(state: CartaVivaState): CartaVivaState {
       visible: category.visible ?? true,
       order: typeof category.order === "number" ? category.order : index,
       group: category.group ?? "comida",
+      customGroupLabel: category.customGroupLabel ?? "",
     })),
     products: (state.products?.length
       ? state.products

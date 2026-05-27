@@ -2,7 +2,7 @@
 
 import { Languages, Wand2 } from "lucide-react";
 import type { CartaVivaState, LanguageCode } from "@/lib/cartaviva-data";
-import { getPlanConfig } from "@/lib/plan-config";
+import { extraLanguagesPlanMessage, getExtraLanguagesLimit, getPlanConfig, supportsExtraLanguages } from "@/lib/plan-config";
 
 const LANGUAGES: { code: LanguageCode; label: string; flag: string }[] = [
   { code: "en", label: "Inglés", flag: "🇬🇧" },
@@ -24,8 +24,8 @@ function Textarea({ value, onChange, placeholder }: { value?: string; onChange: 
 
 export function TranslationEditor({ data, onChange, onNotice }: Props) {
   const plan = getPlanConfig(data.settings.plan);
-  const maxExtraLanguages = plan.maxExtraLanguages;
-  const canUseLanguages = maxExtraLanguages > 0;
+  const maxExtraLanguages = getExtraLanguagesLimit(data.settings.plan);
+  const canUseLanguages = supportsExtraLanguages(data.settings.plan);
   const selected = (data.settings.extraLanguages || []).filter((lang) => lang !== "es") as LanguageCode[];
   const activeLanguages = selected.length ? selected : ["en"] as LanguageCode[];
   const activeLanguage = activeLanguages[0];
@@ -118,12 +118,21 @@ export function TranslationEditor({ data, onChange, onNotice }: Props) {
       <div className="rounded-[1.8rem] border border-[#eadfce] bg-[#fffaf3] p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="flex items-center gap-2 text-sm font-black text-[#221812]"><Languages size={17} className="text-[#e85d04]" /> Idiomas del plan Pro</p>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-7 text-[#6b594a]">El idioma principal es ES. Carta Visual incluye 1 idioma extra editable y Restaurante Pro hasta 3. Puedes revisar cada traducción antes de publicar.</p>
+            <p className="flex items-center gap-2 text-sm font-black text-[#221812]"><Languages size={17} className="text-[#e85d04]" /> Idiomas editables</p>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-7 text-[#6b594a]">El idioma principal es ES. Los idiomas extra solo se desbloquean en los planes compatibles y se revisan manualmente antes de publicar.</p>
           </div>
           <span className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#6b594a] shadow-sm">Plan actual: {plan.name}</span>
         </div>
-        {!canUseLanguages ? <div className="mt-4 rounded-[1.4rem] border border-orange-200 bg-[#fff4e8] p-4 text-sm font-black text-[#a3581c]">Los idiomas extra están disponibles desde Carta Visual. Puedes ver la sección, pero no se desbloquea hasta activar un plan compatible.</div> : <div className="mt-4 rounded-[1.4rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-800">Tu plan permite hasta {maxExtraLanguages} idioma{maxExtraLanguages === 1 ? "" : "s"} extra editable{maxExtraLanguages === 1 ? "" : "s"}.</div>}
+        {!canUseLanguages ? (
+          <div className="mt-4 rounded-[1.4rem] border border-orange-200 bg-[#fff4e8] p-4 text-sm font-black text-[#a3581c]">
+            Idiomas extra disponibles desde Carta Visual.
+          </div>
+        ) : (
+          <div className="mt-4 rounded-[1.4rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-800">
+            {extraLanguagesPlanMessage(data.settings.plan)}
+          </div>
+        )}
+        {!canUseLanguages ? null : (
         <div className="mt-4 flex flex-wrap gap-2">
           {LANGUAGES.map((language) => {
             const active = selected.includes(language.code);
@@ -134,9 +143,19 @@ export function TranslationEditor({ data, onChange, onNotice }: Props) {
             );
           })}
         </div>
+        )}
       </div>
 
-      {activeLanguages.map((language) => (
+      {!canUseLanguages ? (
+        <section className="rounded-[1.8rem] border border-[#eadfce] bg-white p-6 shadow-sm">
+          <h3 className="text-2xl font-black text-[#221812]">Editor de idiomas</h3>
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-[#6b594a]">
+            {extraLanguagesPlanMessage(data.settings.plan)}
+          </p>
+        </section>
+      ) : null}
+
+      {canUseLanguages ? activeLanguages.map((language) => (
         <section key={language} className="rounded-[1.8rem] border border-[#eadfce] bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-2xl font-black">Traducciones · {LANGUAGES.find((entry) => entry.code === language)?.label || language.toUpperCase()}</h3>
@@ -179,7 +198,7 @@ export function TranslationEditor({ data, onChange, onNotice }: Props) {
             </div>
           </div>
         </section>
-      ))}
+      )) : null}
     </div>
   );
 }

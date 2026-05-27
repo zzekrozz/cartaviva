@@ -46,6 +46,7 @@ export function DailyMenuEditor({
   uploadContext?: Omit<ImageUploadContext, "folder">;
   photosEnabled?: boolean;
 }) {
+  const photoMessage = "Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.";
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[2rem] border border-[#eadfce] bg-white shadow-sm">
@@ -94,9 +95,9 @@ export function DailyMenuEditor({
 
       <div className="rounded-[2rem] border border-[#eadfce] bg-[#fff7ee] p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#221812] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">Primeros</span>
-          <span className="rounded-full border border-[#f0d7b9] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#a3581c]">Segundos</span>
-          <span className="rounded-full border border-[#f0d7b9] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#a3581c]">Postres</span>
+          <button type="button" className="rounded-full bg-[#221812] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">Primeros</button>
+          <button type="button" className="rounded-full border border-[#f0d7b9] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#a3581c]">Segundos</button>
+          <button type="button" className="rounded-full border border-[#f0d7b9] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#a3581c]">Postres</button>
         </div>
         <div className="grid gap-3 lg:grid-cols-3">
           <PreviewBlock title="Primeros" value={data.dailyMenu.starters} />
@@ -112,17 +113,17 @@ export function DailyMenuEditor({
         </label>
         <label className="flex items-center justify-between rounded-[1.6rem] border border-[#eadfce] bg-white p-4 font-black text-[#221812] shadow-sm">
           <span className="flex items-center gap-2"><ImageIcon size={18} className="text-[#e85d04]" /> Mostrar fotos en menú del día</span>
-          <input type="checkbox" checked={data.dailyMenu.showImages} onChange={(event) => onChange("showImages", event.target.checked)} className="h-5 w-5 accent-[#e85d04]" />
+          <input type="checkbox" checked={data.dailyMenu.showImages} onChange={(event) => onChange("showImages", event.target.checked)} className="h-5 w-5 accent-[#e85d04]" disabled={!photosEnabled} />
         </label>
       </div>
 
       <Field label="Nota del día" hint="Aparece al final del bloque destacado."><Textarea value={data.dailyMenu.note} onChange={(event) => onChange("note", event.target.value)} /></Field>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ImageUploadField label="Foto principal del menú" hint="Opcional. Se usa como portada del bloque de menú del día." value={data.dailyMenu.coverImage} onChange={(value) => onChange("coverImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/cover" } : undefined} maxWidth={1600} disabled={!photosEnabled} disabledMessage="Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes." />
-        <ImageUploadField label="Foto primeros" hint="Opcional." value={data.dailyMenu.startersImage} onChange={(value) => onChange("startersImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/starters" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage="Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes." />
-        <ImageUploadField label="Foto segundos" hint="Opcional." value={data.dailyMenu.mainsImage} onChange={(value) => onChange("mainsImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/mains" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage="Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes." />
-        <ImageUploadField label="Foto postres" hint="Opcional." value={data.dailyMenu.dessertsImage} onChange={(value) => onChange("dessertsImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/desserts" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage="Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes." />
+        <ImageUploadField label="Foto principal del menú" hint="Opcional. Disponible desde Carta Visual." value={data.dailyMenu.coverImage} onChange={(value) => onChange("coverImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/cover" } : undefined} maxWidth={1600} disabled={!photosEnabled} disabledMessage={photoMessage} />
+        <ImageUploadField label="Foto primeros" hint="Opcional. Disponible desde Carta Visual." value={data.dailyMenu.startersImage} onChange={(value) => onChange("startersImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/starters" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage={photoMessage} />
+        <ImageUploadField label="Foto segundos" hint="Opcional. Disponible desde Carta Visual." value={data.dailyMenu.mainsImage} onChange={(value) => onChange("mainsImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/mains" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage={photoMessage} />
+        <ImageUploadField label="Foto postres" hint="Opcional. Disponible desde Carta Visual." value={data.dailyMenu.dessertsImage} onChange={(value) => onChange("dessertsImage", value)} uploadContext={uploadContext ? { ...uploadContext, folder: "daily-menu/desserts" } : undefined} maxWidth={1200} disabled={!photosEnabled} disabledMessage={photoMessage} />
       </div>
 
       <div className="flex items-start gap-3 rounded-[1.6rem] border border-[#f0d7b9] bg-[#fff4e8] p-4 text-sm font-semibold leading-7 text-[#6b594a]">

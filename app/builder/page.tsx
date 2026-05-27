@@ -33,7 +33,7 @@ import { SectionTabs } from "@/components/cartaviva/SectionTabs";
 import { TrialPlanBanner } from "@/components/cartaviva/TrialPlanBanner";
 import { TranslationEditor } from "@/components/cartaviva/TranslationEditor";
 import { TutorialGuide } from "@/components/cartaviva/TutorialGuide";
-import { getPlanConfig, isOneEuroTrial, toPlanTier, type TrialType } from "@/lib/plan-config";
+import { getPlanConfig, isOneEuroTrial, supportsDailyMenuPhotos, supportsProductPhotos, toPlanTier, type TrialType } from "@/lib/plan-config";
 
 const steps: BuilderStep[] = [
   { id: "restaurant", label: "Restaurante", icon: Store },
@@ -69,7 +69,6 @@ function Panel({
 function stripImagesForFree(state: CartaVivaState): CartaVivaState {
   return normalizeState({
     ...state,
-    restaurant: { ...state.restaurant, logoUrl: "", coverUrl: "" },
     products: state.products.map((product) => ({ ...product, imageUrl: "" })),
     dailyMenu: {
       ...state.dailyMenu,
@@ -134,8 +133,13 @@ export default function BuilderPage() {
     return () => window.clearTimeout(timeout);
   }, [data]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeStep]);
+
   const planConfig = getPlanConfig(data.settings.plan);
-  const photosEnabled = planConfig.hasPhotos;
+  const productPhotosEnabled = supportsProductPhotos(data.settings.plan);
+  const dailyMenuPhotosEnabled = supportsDailyMenuPhotos(data.settings.plan);
   const publicPath = useMemo(() => buildPublicPath(data.restaurant.slug), [data.restaurant.slug]);
   const publicUrl = useMemo(() => `${origin}${publicPath}`, [origin, publicPath]);
 
@@ -147,14 +151,10 @@ export default function BuilderPage() {
     });
   }, [categoryFilter, data.products, statusFilter]);
 
-  function updateRestaurant(field: keyof CartaVivaState["restaurant"], value: string) {
-    if (!photosEnabled && ["logoUrl", "coverUrl"].includes(field) && value) {
-      setPlanNotice("Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes.");
-      return;
-    }
+  function updateRestaurant<K extends keyof CartaVivaState["restaurant"]>(field: K, value: CartaVivaState["restaurant"][K]) {
     setData((current) => {
       const restaurant = { ...current.restaurant, [field]: value };
-      if (field === "name") restaurant.slug = slugify(value);
+      if (field === "name") restaurant.slug = slugify(String(value));
       return { ...current, restaurant };
     });
   }
@@ -163,9 +163,17 @@ export default function BuilderPage() {
     setData((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
   }
 
+  function updateSettingField<K extends keyof CartaVivaState["settings"]>(field: K, value: CartaVivaState["settings"][K]) {
+    updateSettings({ [field]: value } as Partial<CartaVivaState["settings"]>);
+  }
+
   function updateDailyMenu<K extends keyof CartaVivaState["dailyMenu"]>(field: K, value: CartaVivaState["dailyMenu"][K]) {
-    if (!photosEnabled && ["coverImage", "startersImage", "mainsImage", "dessertsImage"].includes(String(field)) && value) {
-      setPlanNotice("Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes.");
+    if (!dailyMenuPhotosEnabled && ["coverImage", "startersImage", "mainsImage", "dessertsImage"].includes(String(field)) && value) {
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
+      return;
+    }
+    if (!dailyMenuPhotosEnabled && field === "showImages" && value) {
+      setPlanNotice("Las fotos del menú del día están disponibles desde Carta Visual. Puedes probar un plan de pago por 1 € el primer mes.");
       return;
     }
     setData((current) => ({ ...current, dailyMenu: { ...current.dailyMenu, [field]: value } }));
@@ -177,7 +185,8 @@ export default function BuilderPage() {
       name: "Nueva categoria",
       visible: true,
       order: data.categories.length,
-      group: "comida"
+      group: "comida",
+      customGroupLabel: ""
     };
     setData((current) => ({ ...current, categories: [...current.categories, category] }));
   }
@@ -228,8 +237,8 @@ export default function BuilderPage() {
   }
 
   function updateProduct(id: string, updates: Partial<Product>) {
-    if (!photosEnabled && updates.imageUrl) {
-      setPlanNotice("Las fotos están disponibles desde Menú Día. Puedes probarlo por 1 € el primer mes.");
+    if (!productPhotosEnabled && updates.imageUrl) {
+      setPlanNotice("Las fotos de productos están disponibles desde Menú Día. Puedes probar un plan de pago por 1 € el primer mes.");
       return;
     }
     setData((current) => ({
@@ -276,7 +285,7 @@ export default function BuilderPage() {
     if (activeStep === "restaurant") {
       return (
         <Panel eyebrow="Paso 1" title="Información del restaurante" text="Nombre, portada, contacto, horario y color principal para dar presencia de miniweb profesional.">
-          <RestaurantForm data={data} onChange={updateRestaurant} photosEnabled={photosEnabled} />
+          <RestaurantForm data={data} onChange={updateRestaurant} />
         </Panel>
       );
     }
@@ -288,8 +297,8 @@ export default function BuilderPage() {
             data={data}
             onTemplateChange={(value: MenuTemplate) => updateRestaurant("template", value)}
             onPlanChange={(value: PlanTier) => setData((current) => applyPlanToState(current, value))}
-            onBooleanChange={(field, value) => updateSettings({ [field]: value })}
-            onValueChange={(field, value) => updateSettings({ [field]: value })}
+            onBooleanChange={(field, value) => updateSettingField(field, value)}
+            onValueChange={(field, value) => updateSettingField(field, value)}
           />
         </Panel>
       );
@@ -324,7 +333,7 @@ export default function BuilderPage() {
             onDelete={deleteProduct}
             onDuplicate={duplicateProduct}
             onMove={moveProduct}
-            photosEnabled={photosEnabled}
+            photosEnabled={productPhotosEnabled}
           />
         </Panel>
       );
@@ -333,7 +342,7 @@ export default function BuilderPage() {
     if (activeStep === "daily-menu") {
       return (
         <Panel eyebrow="Paso 5" title="Menú del día" text="Rediseñado para destacar mas arriba y verse bien tanto en movil como en escritorio, con fotos opcionales por bloque.">
-          <DailyMenuEditor data={data} onChange={updateDailyMenu} photosEnabled={photosEnabled} />
+          <DailyMenuEditor data={data} onChange={updateDailyMenu} photosEnabled={dailyMenuPhotosEnabled} />
           <div className="mt-6"><WeeklyMenuEditor data={data} onChange={(weeklyMenus) => setData({ ...data, weeklyMenus })} onUseToday={(menu) => setData({ ...data, dailyMenu: { ...data.dailyMenu, title: menu.title, price: menu.price, schedule: menu.schedule, starters: menu.starters, mains: menu.mains, desserts: menu.desserts, drinkIncluded: menu.drinkIncluded, note: menu.note } })} /></div>
         </Panel>
       );

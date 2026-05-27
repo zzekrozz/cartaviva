@@ -53,9 +53,9 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     hasIncludedSetupQuarterly: false,
     hasIncludedSetupYearly: false,
     qrBranding: "branded",
-    description: "Perfecto para empezar sin coste y probar tu carta digital.",
-    features: ["Hasta 20 productos", "Sin fotos", "2 categorías", "Alérgenos incluidos", "QR bonito con marca", "Botón WhatsApp", "Página pública", "1 idioma principal", "Marca visible"],
-    builderSummary: "20 productos, sin fotos, QR con marca y 1 idioma principal.",
+    description: "Perfecto para empezar sin coste y probar tu carta digital con logo y portada del local.",
+    features: ["Hasta 20 productos", "Sin fotos de productos", "Logo y portada del local", "2 categorías", "Alérgenos incluidos", "QR bonito con marca", "Botón WhatsApp", "Página pública", "1 idioma principal", "Marca visible"],
+    builderSummary: "20 productos, logo y portada permitidos, sin fotos de productos, QR con marca y 1 idioma principal.",
     cta: "Empezar gratis"
   },
   "menu-day": {
@@ -80,9 +80,9 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     qrBranding: "clean",
     description: "Para bares y cafeterías que quieren enseñar el menú del día y actualizarlo rápido.",
     dailyText: "Poco más de 0,50 € al día para tener tu menú del día siempre actualizado.",
-    features: ["Hasta 40 productos", "Hasta 30 fotos", "Menú del día manual", "Productos agotados/ocultos", "Alérgenos incluidos", "QR limpio", "Botón WhatsApp", "Horario, dirección e Instagram", "1 idioma principal"],
+    features: ["Hasta 40 productos", "Hasta 30 fotos de productos", "Menú del día manual", "Productos agotados/ocultos", "Alérgenos incluidos", "QR limpio", "Botón WhatsApp", "Horario, dirección e Instagram", "1 idioma principal"],
     builderSummary: "40 productos, 30 fotos, menú del día manual y QR limpio.",
-    cta: "Probar por 1 € el primer mes"
+    cta: "Construir ahora gratis"
   },
   "carta-visual": {
     id: "carta-visual",
@@ -109,7 +109,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     dailyText: "Menos que un café al día para tener una carta visual con fotos.",
     features: ["Hasta 80 productos", "Hasta 60 fotos", "Categorías ilimitadas", "Menú del día", "Fotos opcionales en menú del día", "Productos agotados/ocultos", "Alérgenos incluidos", "Etiquetas base", "5 plantillas visuales", "1 idioma extra editable"],
     builderSummary: "80 productos, 60 fotos, 5 plantillas, miniweb, QR limpio y 1 idioma extra.",
-    cta: "Probar por 1 € el primer mes"
+    cta: "Construir ahora gratis"
   },
   "restaurant-pro": {
     id: "restaurant-pro",
@@ -135,7 +135,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     dailyText: "Personalización, idiomas editables y QR por sección por menos de dos cafés al día.",
     features: ["Hasta 150 productos", "Hasta 120 fotos", "Hasta 3 idiomas extra editables", "Tipografías editables", "QR por sección", "Menú semanal programado", "Diseño de QR para pegatina o mesa", "Plantillas premium", "Etiquetas personalizadas", "Colores avanzados"],
     builderSummary: "150 productos, 120 fotos, 3 idiomas extra, menú semanal, tipografías y QR por sección.",
-    cta: "Probar por 1 € el primer mes"
+    cta: "Construir ahora gratis"
   }
 };
 
@@ -176,11 +176,39 @@ export function displayPriceForInterval(plan: PlanConfig, interval: BillingInter
 
 export function countPhotos(state: { restaurant: { logoUrl?: string; coverUrl?: string }; dailyMenu: Record<string, any>; products: { imageUrl?: string }[] }) {
   let total = 0;
-  if (state.restaurant.logoUrl) total += 1;
-  if (state.restaurant.coverUrl) total += 1;
   ["coverImage", "startersImage", "mainsImage", "dessertsImage"].forEach((key) => {
     if (state.dailyMenu?.[key]) total += 1;
   });
   total += state.products.filter((product) => Boolean(product.imageUrl)).length;
   return total;
+}
+
+export function supportsProductPhotos(plan: PlanTier) {
+  return plan !== "free";
+}
+
+export function supportsRestaurantBrandImages(_plan: PlanTier) {
+  return true;
+}
+
+export function supportsDailyMenuPhotos(plan: PlanTier) {
+  return plan === "carta-visual" || plan === "restaurant-pro";
+}
+
+export function getExtraLanguagesLimit(plan: PlanTier) {
+  return PLAN_CONFIGS[plan].maxExtraLanguages;
+}
+
+export function supportsExtraLanguages(plan: PlanTier) {
+  return getExtraLanguagesLimit(plan) > 0;
+}
+
+export function extraLanguagesPlanMessage(plan: PlanTier) {
+  if (plan === "carta-visual") {
+    return "Tu plan incluye 1 idioma extra editable. Puedes traducir y revisar los textos antes de publicar.";
+  }
+  if (plan === "restaurant-pro") {
+    return "Tu plan incluye hasta 3 idiomas extra editables. Ideal para restaurantes turísticos.";
+  }
+  return "Idiomas extra disponibles desde Carta Visual.";
 }
