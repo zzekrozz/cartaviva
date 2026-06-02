@@ -1,2 +1,0 @@
-import { LegalPage } from "@/components/legal/LegalPage";
-export default function Page() { return <LegalPage title="Aviso legal"><h2>Titular del sitio</h2><p>Titular: [Nombre o empresa]. NIF/CIF: [pendiente]. Email: [email de contacto]. Dominio: [dominio definitivo].</p><h2>Objeto</h2><p>Este sitio ofrece una herramienta digital para crear cartas visuales, menús del día, QR y páginas públicas para restaurantes, bares y cafeterías.</p><h2>Contacto</h2><p>Para cualquier consulta legal o comercial puedes escribir a [email de soporte].</p></LegalPage>; }
