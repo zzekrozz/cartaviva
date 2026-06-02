@@ -41,7 +41,15 @@ const previewMap: Record<MenuTemplate, { outer: string; card: string; bar: strin
     accent: "bg-[#e7c989]",
     photo: "bg-[#cfe2dc]",
     list: "bg-[#eef7f4]"
-  }
+  },
+    "sweet-cafe": {
+    outer: "bg-gradient-to-br from-[#fff1e6] via-[#ffd6c2] to-[#f7a072]",
+    card: "bg-[#fffaf5]",
+    bar: "bg-[#7b3f2a]",
+    accent: "bg-[#f28482]",
+    photo: "bg-gradient-to-br from-[#f6bd60] to-[#f7ede2]",
+    list: "bg-[#fff1e6]",
+  },
 };
 
 function MiniPreview({ template }: { template: MenuTemplate }) {
