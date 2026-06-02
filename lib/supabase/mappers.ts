@@ -285,9 +285,25 @@ export function stateFromRows(
       seoDescription: landingRow.seo_description || "",
       landingTemplate: landingRow.landing_template || "warm",
       primaryCta: landingRow.primary_cta || "Ver carta",
-      secondaryCta: landingRow.secondary_cta || "Cómo llegar",
-    } : undefined,
-    published: restaurant.status === "published",
+     secondaryCta: landingRow.secondary_cta || "Cómo llegar",
+} : {
+  enabled: false,
+  heroTitle: "",
+  heroSubtitle: "",
+  storyTitle: "",
+  storyText: "",
+  galleryImages: [],
+  featuredProductIds: [],
+  googleMapsUrl: "",
+  googleReviewsUrl: "",
+  reservationUrl: "",
+  seoTitle: "",
+  seoDescription: "",
+  landingTemplate: "warm",
+  primaryCta: "Ver carta",
+  secondaryCta: "Cómo llegar",
+},
+published: restaurant.status === "published",
     status: restaurant.status || "draft"
   });
 }
