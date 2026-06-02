@@ -1,0 +1,3 @@
+import { BRAND_NAME } from "@/lib/brand";
+import { LegalPage } from "@/components/legal/LegalPage";
+export default function Page() { return <LegalPage title="Información sobre alérgenos"><h2>Aviso importante</h2><p>La información de alérgenos es introducida y revisada por el restaurante. {BRAND_NAME} proporciona la herramienta técnica, pero no verifica ni garantiza la exactitud de dicha información.</p><h2>Revisión</h2><p>El restaurante debe revisar los alérgenos antes de publicar y actualizar la información cuando cambien recetas, ingredientes, proveedores o procesos de cocina.</p><h2>Consulta directa</h2><p>Los clientes con alergias o intolerancias deben confirmar la información directamente con el restaurante antes de consumir.</p></LegalPage>; }

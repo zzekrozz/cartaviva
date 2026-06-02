@@ -1,0 +1,2 @@
+import { LegalPage } from "@/components/legal/LegalPage";
+export default function Page() { return <LegalPage title="Política de cookies"><h2>Cookies técnicas</h2><p>El sitio puede usar cookies o almacenamiento local necesario para iniciar sesión, guardar preferencias, recordar el progreso del builder y mantener la seguridad.</p><h2>Cookies futuras</h2><p>Si en el futuro se añaden analíticas, publicidad o herramientas de terceros no esenciales, se actualizará esta política y se añadirá el mecanismo de consentimiento correspondiente.</p></LegalPage>; }
